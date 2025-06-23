@@ -69,18 +69,41 @@ function executePythonLikeCode(code: string): CompilationResult {
       };
     }
 
-    // Basic syntax validation
+    // Enhanced Python syntax validation
     const lines = code.split('\n');
-    let indentLevel = 0;
     let inFunction = false;
+    let inDocstring = false;
+    let docstringDelimiter = '';
 
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (!line || line.startsWith('#')) continue;
+      const line = lines[i];
+      const trimmedLine = line.trim();
+      
+      // Skip empty lines and comments
+      if (!trimmedLine || trimmedLine.startsWith('#')) continue;
+
+      // Handle docstrings
+      if (trimmedLine.startsWith('"""') || trimmedLine.startsWith("'''")) {
+        if (!inDocstring) {
+          inDocstring = true;
+          docstringDelimiter = trimmedLine.startsWith('"""') ? '"""' : "'''";
+          // Check if docstring ends on same line
+          if (trimmedLine.endsWith(docstringDelimiter) && trimmedLine.length > 3) {
+            inDocstring = false;
+          }
+          continue;
+        } else if (trimmedLine.endsWith(docstringDelimiter)) {
+          inDocstring = false;
+          continue;
+        }
+      }
+      
+      // Skip content inside docstrings
+      if (inDocstring) continue;
 
       // Check function definition
-      if (line.startsWith('def ')) {
-        if (!line.endsWith(':')) {
+      if (trimmedLine.startsWith('def ')) {
+        if (!trimmedLine.endsWith(':')) {
           return {
             success: false,
             error: `Line ${i + 1}: Function definition must end with ':'`
@@ -90,12 +113,25 @@ function executePythonLikeCode(code: string): CompilationResult {
         continue;
       }
 
+      // End function scope when we encounter another function or class at root level
+      if (inFunction && !line.startsWith(' ') && !line.startsWith('\t') && (trimmedLine.startsWith('def ') || trimmedLine.startsWith('class '))) {
+        inFunction = false;
+      }
+
       // Check indentation in function
-      if (inFunction && line && !line.startsWith(' ') && !line.startsWith('\t') && !line.startsWith('def ')) {
-        return {
-          success: false,
-          error: `Line ${i + 1}: Code inside function must be indented`
-        };
+      if (inFunction && trimmedLine) {
+        const hasIndentation = line.startsWith('    ') || line.startsWith('\t');
+        
+        // Allow certain constructs without strict indentation checking
+        const isReturnStatement = trimmedLine.startsWith('return');
+        const isDocstring = trimmedLine.startsWith('"""') || trimmedLine.startsWith("'''");
+        
+        if (!hasIndentation && !isReturnStatement && !isDocstring) {
+          // More flexible indentation check - just warn about common patterns
+          if (trimmedLine.length > 0) {
+            console.warn(`Line ${i + 1}: Consider indenting code inside function`);
+          }
+        }
       }
 
       // Check for balanced braces in return statement
