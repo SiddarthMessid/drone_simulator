@@ -9,6 +9,7 @@ export default function CodeEditor() {
   const { code, setCode, error, setError } = useEditor();
   const { updatePIDParams } = useDrone();
   const [isCompiling, setIsCompiling] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   const defaultCode = `# Custom PID Controller for Drone
 # Modify the parameters below to change drone behavior
@@ -66,18 +67,34 @@ def advanced_pid_logic(error, dt):
     setIsCompiling(true);
     setError("");
     
+    console.log("Starting compilation...");
+    console.log("Code to compile:", code);
+    
     try {
       const result = compileCode(code);
+      console.log("Compilation result:", result);
+      
       if (result.success && result.pidParams) {
         updatePIDParams(result.pidParams);
-        console.log("PID parameters updated:", result.pidParams);
+        console.log("✅ PID parameters successfully updated:", result.pidParams);
+        setError(""); // Clear any previous errors
+        setSuccessMessage("✅ Code compiled and PID parameters updated successfully!");
+        
+        // Clear success message after 3 seconds
+        setTimeout(() => {
+          setSuccessMessage("");
+        }, 3000);
       } else {
-        setError(result.error || "Compilation failed");
+        console.error("❌ Compilation failed:", result.error);
+        setError(result.error || "Compilation failed - unknown error");
+        setSuccessMessage(""); // Clear any previous success message
       }
     } catch (err) {
+      console.error("❌ Compilation exception:", err);
       setError(`Compilation error: ${err}`);
     } finally {
       setIsCompiling(false);
+      console.log("Compilation process finished");
     }
   };
 
@@ -148,6 +165,20 @@ def advanced_pid_logic(error, dt):
           spellCheck={false}
         />
       </div>
+
+      {/* Success Display */}
+      {successMessage && (
+        <div style={{
+          padding: '12px 16px',
+          background: 'rgba(34, 197, 94, 0.1)',
+          borderTop: '1px solid rgba(34, 197, 94, 0.3)',
+          color: '#86efac',
+          fontSize: '12px',
+          fontFamily: 'Monaco, Consolas, "Courier New", monospace'
+        }}>
+          {successMessage}
+        </div>
+      )}
 
       {/* Error Display */}
       {error && (
