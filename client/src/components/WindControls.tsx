@@ -12,6 +12,7 @@ export default function WindControls() {
   } = useWind();
   
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [newWind, setNewWind] = useState({
     name: "Wind Zone",
     force: 5,
@@ -25,6 +26,41 @@ export default function WindControls() {
 
   const addNewWindSource = () => {
     addWindSource(newWind);
+    resetForm();
+    setShowAddForm(false);
+  };
+
+  const startEdit = (source: WindSource) => {
+    setEditingId(source.id);
+    setNewWind({
+      name: source.name,
+      force: source.force,
+      direction: source.direction,
+      type: source.type,
+      variableParams: source.variableParams,
+      position: source.position,
+      radius: source.radius,
+      enabled: source.enabled
+    });
+    setShowAddForm(true);
+  };
+
+  const saveEdit = () => {
+    if (editingId) {
+      updateWindSource(editingId, newWind);
+      setEditingId(null);
+      resetForm();
+      setShowAddForm(false);
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    resetForm();
+    setShowAddForm(false);
+  };
+
+  const resetForm = () => {
     setNewWind({
       name: "Wind Zone",
       force: 5,
@@ -35,7 +71,6 @@ export default function WindControls() {
       radius: 20,
       enabled: true
     });
-    setShowAddForm(false);
   };
 
   const inputStyle = {
@@ -71,10 +106,18 @@ export default function WindControls() {
         </h3>
         <div style={{ display: 'flex', gap: '8px' }}>
           <button
-            onClick={() => setShowAddForm(!showAddForm)}
+            onClick={() => {
+              if (showAddForm && !editingId) {
+                setShowAddForm(false);
+              } else if (editingId) {
+                cancelEdit();
+              } else {
+                setShowAddForm(true);
+              }
+            }}
             style={buttonStyle}
           >
-            {showAddForm ? 'Cancel' : '+ Add Wind'}
+            {showAddForm ? (editingId ? 'Cancel Edit' : 'Cancel') : '+ Add Wind'}
           </button>
           {windSources.length > 0 && (
             <button
@@ -96,7 +139,9 @@ export default function WindControls() {
           padding: '16px',
           marginBottom: '16px'
         }}>
-          <h4 style={{ margin: '0 0 12px 0', fontSize: '14px' }}>Add New Wind Source</h4>
+          <h4 style={{ margin: '0 0 12px 0', fontSize: '14px' }}>
+            {editingId ? 'Edit Wind Source' : 'Add New Wind Source'}
+          </h4>
           
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px' }}>
             <div>
@@ -232,8 +277,11 @@ export default function WindControls() {
             </div>
           )}
 
-          <button onClick={addNewWindSource} style={{...buttonStyle, width: '100%'}}>
-            Add Wind Source
+          <button 
+            onClick={editingId ? saveEdit : addNewWindSource} 
+            style={{...buttonStyle, width: '100%'}}
+          >
+            {editingId ? 'Save Changes' : 'Add Wind Source'}
           </button>
         </div>
       )}
@@ -275,6 +323,17 @@ export default function WindControls() {
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '4px', marginLeft: '8px' }}>
+                  <button
+                    onClick={() => startEdit(source)}
+                    style={{
+                      ...buttonStyle,
+                      background: 'rgba(59, 130, 246, 0.8)',
+                      fontSize: '10px',
+                      padding: '4px 8px'
+                    }}
+                  >
+                    Edit
+                  </button>
                   <button
                     onClick={() => toggleWindSource(source.id)}
                     style={{
