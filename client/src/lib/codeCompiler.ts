@@ -194,11 +194,23 @@ function executePythonLikeCode(code: string): CompilationResult {
 
 function parsePIDParameters(code: string): PIDParams | null {
   try {
-    // Extract numeric values from the code using regex
+    // Extract numeric values from the code using improved regex
     const extractParam = (axis: string, param: string): number => {
-      const pattern = new RegExp(`'${axis}'[\\s\\S]*?'${param}'\\s*:\\s*([0-9]*\\.?[0-9]+)`, 'i');
-      const match = code.match(pattern);
-      return match ? parseFloat(match[1]) : 0;
+      // Look for the pattern within the specific axis block
+      const axisPattern = new RegExp(`'${axis}'\\s*:\\s*\\{([^}]+)\\}`, 'i');
+      const axisMatch = code.match(axisPattern);
+      
+      if (axisMatch) {
+        const axisContent = axisMatch[1];
+        const paramPattern = new RegExp(`'${param}'\\s*:\\s*([0-9]*\\.?[0-9]+)`, 'i');
+        const paramMatch = axisContent.match(paramPattern);
+        return paramMatch ? parseFloat(paramMatch[1]) : 1.0; // Default to 1.0 instead of 0
+      }
+      
+      // Fallback: search entire code
+      const globalPattern = new RegExp(`'${param}'\\s*:\\s*([0-9]*\\.?[0-9]+)`, 'i');
+      const globalMatch = code.match(globalPattern);
+      return globalMatch ? parseFloat(globalMatch[1]) : 1.0;
     };
 
     const pidParams: PIDParams = {
