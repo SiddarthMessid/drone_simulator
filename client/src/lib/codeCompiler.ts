@@ -6,19 +6,35 @@ interface CompilationResult {
   error?: string;
 }
 
-export function compileCode(code: string): CompilationResult {
+export function compileCode(code: string, telemetry?: any): CompilationResult {
   try {
     console.log("Compiling Python-like code:", code);
 
+    // Inject telemetry variables into the code execution context
+    let processedCode = code;
+    if (telemetry) {
+      const telemetryVars = `
+# Injected telemetry variables
+altitude = ${telemetry.altitude || 0}
+speed = ${telemetry.speed || 0}
+pitch = ${telemetry.pitch || 0}
+roll = ${telemetry.roll || 0}
+yaw = ${telemetry.yaw || 0}
+throttle = ${telemetry.throttle || 0}
+
+`;
+      processedCode = telemetryVars + code;
+    }
+
     // Create a safe execution environment that mimics Python
-    const compilationResult = executePythonLikeCode(code);
+    const compilationResult = executePythonLikeCode(processedCode);
     
     if (!compilationResult.success) {
       return compilationResult;
     }
 
     // Parse the PID parameters from the executed result
-    const pidParams = parsePIDParameters(code);
+    const pidParams = parsePIDParameters(processedCode);
     
     if (!pidParams) {
       return {

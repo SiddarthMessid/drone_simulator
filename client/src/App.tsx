@@ -5,6 +5,8 @@ import DroneSimulation from "./components/DroneSimulation";
 import CodeEditor from "./components/CodeEditor";
 import ControlPanel from "./components/ControlPanel";
 import WindControls from "./components/WindControls";
+import EnvironmentEditor from "./components/EnvironmentEditor";
+import RetractableWindControls from "./components/RetractableWindControls";
 import "@fontsource/inter";
 
 // Define control keys for the drone
@@ -34,6 +36,26 @@ function App() {
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative', background: '#0a0a0a' }}>
       <KeyboardControls map={keyMap}>
+        {/* Top Retractable Panels */}
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 20,
+          pointerEvents: 'auto',
+          display: 'flex',
+          gap: '10px',
+          padding: '10px'
+        }}>
+          <div style={{ flex: 1 }}>
+            <EnvironmentEditor />
+          </div>
+          <div style={{ flex: 1 }}>
+            <RetractableWindControls />
+          </div>
+        </div>
+
         {/* 3D Canvas */}
         <Canvas
           camera={{
@@ -89,16 +111,6 @@ function App() {
               pointerEvents: 'auto'
             }}>
               <ControlPanel />
-            </div>
-            
-            <div style={{ 
-              width: '350px', 
-              background: 'rgba(20, 20, 20, 0.95)',
-              borderRadius: '8px',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              pointerEvents: 'auto'
-            }}>
-              <WindControls />
             </div>
           </div>
         </div>

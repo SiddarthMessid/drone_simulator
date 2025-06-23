@@ -7,16 +7,25 @@ export default function CodeEditor() {
   const editorRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { code, setCode, error, setError } = useEditor();
-  const { updatePIDParams } = useDrone();
+  const { updatePIDParams, telemetry } = useDrone();
   const [isCompiling, setIsCompiling] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
   const defaultCode = `# Custom PID Controller for Drone
 # Modify the parameters below to change drone behavior
+# 
+# LIVE TELEMETRY VARIABLES AVAILABLE:
+# - altitude: Current drone altitude (meters)
+# - speed: Current drone speed (m/s)
+# - pitch: Current pitch angle (degrees)
+# - roll: Current roll angle (degrees) 
+# - yaw: Current yaw angle (degrees)
+# - throttle: Current throttle input (0-1)
 
 def get_pid_parameters():
     """
     Return PID parameters for pitch, roll, yaw, and altitude control
+    You can use live telemetry variables to create dynamic PID controllers
     """
     return {
         'pitch': {
@@ -41,21 +50,56 @@ def get_pid_parameters():
         }
     }
 
-# You can add custom functions here
-def custom_gain_adjustment(base_gain, altitude):
+# Example: Dynamic PID based on altitude
+def get_dynamic_pid_parameters():
     """
-    Example: Adjust gains based on altitude
+    Example of using live telemetry for dynamic PID control
     """
-    if altitude > 20:
-        return base_gain * 0.8  # Reduce gain at high altitude
-    return base_gain
+    # Reduce gains at high altitude for stability
+    altitude_factor = 1.0 if altitude < 20 else 0.8
+    
+    # Increase yaw gain based on current speed for better control
+    speed_factor = 1.0 + (speed * 0.1)
+    
+    return {
+        'pitch': {
+            'kp': 2.0 * altitude_factor,
+            'ki': 0.1 * altitude_factor,
+            'kd': 0.5 * altitude_factor
+        },
+        'roll': {
+            'kp': 2.0 * altitude_factor,
+            'ki': 0.1 * altitude_factor,
+            'kd': 0.5 * altitude_factor
+        },
+        'yaw': {
+            'kp': 1.5 * speed_factor,
+            'ki': 0.05,
+            'kd': 0.3
+        },
+        'altitude': {
+            'kp': 3.0,
+            'ki': 0.2,
+            'kd': 1.0
+        }
+    }
 
-# Advanced users can implement custom control logic
-def advanced_pid_logic(error, dt):
+# Advanced: Custom gain adjustment based on multiple factors
+def custom_gain_adjustment(base_gain, current_altitude, current_speed):
     """
-    Custom PID calculation logic
+    Example: Adjust gains based on multiple telemetry variables
     """
-    return error * 2.0  # Simple proportional control example`;
+    factor = 1.0
+    
+    # Reduce gain at high altitude
+    if current_altitude > 20:
+        factor *= 0.8
+    
+    # Increase gain at high speed for better responsiveness
+    if current_speed > 10:
+        factor *= 1.2
+        
+    return base_gain * factor`;
 
   useEffect(() => {
     if (!code) {
@@ -71,7 +115,7 @@ def advanced_pid_logic(error, dt):
     console.log("Code to compile:", code);
     
     try {
-      const result = compileCode(code);
+      const result = compileCode(code, telemetry);
       console.log("Compilation result:", result);
       
       if (result.success && result.pidParams) {
