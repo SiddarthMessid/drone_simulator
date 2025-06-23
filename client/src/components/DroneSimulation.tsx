@@ -5,6 +5,7 @@ import * as THREE from "three";
 import { Controls } from "../App";
 import DroneModel from "./DroneModel";
 import Environment from "./Environment";
+// Wind visualization will be handled inline
 import { useDrone } from "../lib/stores/useDrone";
 import { useWind } from "../lib/stores/useWind";
 import { PIDController } from "../lib/pidController";
@@ -25,7 +26,7 @@ export default function DroneSimulation() {
     setTelemetry
   } = useDrone();
   
-  const { windForce, windDirection } = useWind();
+  const { getWindAtPosition, windSources } = useWind();
   
   // Initialize PID controllers and physics
   const pidController = useRef(new PIDController(pidParams));
@@ -60,12 +61,12 @@ export default function DroneSimulation() {
       delta
     );
 
-    // Apply wind forces
-    const wind = new THREE.Vector3(
-      Math.cos(windDirection) * windForce,
-      0,
-      Math.sin(windDirection) * windForce
+    // Get wind forces at current drone position
+    const windAtPosition = getWindAtPosition(
+      { x: position.x, y: position.y, z: position.z },
+      state.clock.elapsedTime
     );
+    const wind = new THREE.Vector3(windAtPosition.x, windAtPosition.y, windAtPosition.z);
 
     // Update physics
     const newState = dronePhysics.current.update(
@@ -128,21 +129,30 @@ export default function DroneSimulation() {
         <DroneModel />
       </group>
 
-      {/* Wind visualization */}
-      {windForce > 0 && (
-        <group position={[position.x + 5, position.y, position.z]}>
+      {/* Wind Sources Visualization */}
+      {windSources.map((source) => (
+        <group key={source.id} visible={source.enabled}>
+          <mesh position={[source.position.x, source.position.y, source.position.z]}>
+            <cylinderGeometry args={[source.radius, source.radius, source.radius * 0.3, 16]} />
+            <meshBasicMaterial 
+              color={source.enabled ? "#00ff0030" : "#66666630"} 
+              transparent 
+              opacity={0.2}
+              wireframe
+            />
+          </mesh>
           <arrowHelper
             args={[
-              new THREE.Vector3(Math.cos(windDirection), 0, Math.sin(windDirection)),
-              new THREE.Vector3(0, 0, 0),
-              windForce * 2,
-              0x00ff00,
-              windForce * 0.5,
-              windForce * 0.5
+              new THREE.Vector3(Math.cos(source.direction), 0, Math.sin(source.direction)),
+              new THREE.Vector3(source.position.x, source.position.y + source.radius * 0.2, source.position.z),
+              source.force * 1.5,
+              source.enabled ? 0x00ff00 : 0x666666,
+              source.force * 0.3,
+              source.force * 0.2
             ]}
           />
         </group>
-      )}
+      ))}
     </>
   );
 }

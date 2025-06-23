@@ -8,42 +8,22 @@ interface CompilationResult {
 
 export function compileCode(code: string): CompilationResult {
   try {
-    // Remove Python comments and clean up the code
-    const cleanCode = code
-      .split('\n')
-      .map(line => line.trim())
-      .filter(line => line && !line.startsWith('#'))
-      .join(' ');
+    console.log("Compiling Python-like code:", code);
 
-    // Extract the get_pid_parameters function content
-    const functionMatch = cleanCode.match(/def\s+get_pid_parameters\s*\(\s*\)\s*:(.*?)(?=def\s+|$)/s);
+    // Create a safe execution environment that mimics Python
+    const compilationResult = executePythonLikeCode(code);
     
-    if (!functionMatch) {
-      return {
-        success: false,
-        error: "Could not find get_pid_parameters() function"
-      };
+    if (!compilationResult.success) {
+      return compilationResult;
     }
 
-    const functionBody = functionMatch[1];
-    
-    // Extract return statement
-    const returnMatch = functionBody.match(/return\s+\{(.*?)\}/s);
-    
-    if (!returnMatch) {
-      return {
-        success: false,
-        error: "Could not find return statement with dictionary"
-      };
-    }
-
-    // Parse the PID parameters manually
+    // Parse the PID parameters from the executed result
     const pidParams = parsePIDParameters(code);
     
     if (!pidParams) {
       return {
         success: false,
-        error: "Failed to parse PID parameters from code"
+        error: "Failed to extract PID parameters from get_pid_parameters() function"
       };
     }
 
@@ -56,6 +36,8 @@ export function compileCode(code: string): CompilationResult {
       };
     }
 
+    console.log("Compilation successful. PID parameters:", pidParams);
+
     return {
       success: true,
       pidParams
@@ -65,6 +47,111 @@ export function compileCode(code: string): CompilationResult {
     return {
       success: false,
       error: `Compilation error: ${error}`
+    };
+  }
+}
+
+function executePythonLikeCode(code: string): CompilationResult {
+  try {
+    // Check for required function
+    if (!code.includes('def get_pid_parameters()')) {
+      return {
+        success: false,
+        error: "Missing required function: get_pid_parameters()"
+      };
+    }
+
+    // Check for return statement
+    if (!code.includes('return {') && !code.includes('return{')) {
+      return {
+        success: false,
+        error: "get_pid_parameters() function must return a dictionary"
+      };
+    }
+
+    // Basic syntax validation
+    const lines = code.split('\n');
+    let indentLevel = 0;
+    let inFunction = false;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line || line.startsWith('#')) continue;
+
+      // Check function definition
+      if (line.startsWith('def ')) {
+        if (!line.endsWith(':')) {
+          return {
+            success: false,
+            error: `Line ${i + 1}: Function definition must end with ':'`
+          };
+        }
+        inFunction = true;
+        continue;
+      }
+
+      // Check indentation in function
+      if (inFunction && line && !line.startsWith(' ') && !line.startsWith('\t') && !line.startsWith('def ')) {
+        return {
+          success: false,
+          error: `Line ${i + 1}: Code inside function must be indented`
+        };
+      }
+
+      // Check for balanced braces in return statement
+      if (line.includes('return {')) {
+        const openBraces = (line.match(/\{/g) || []).length;
+        const closeBraces = (line.match(/\}/g) || []).length;
+        
+        let j = i;
+        let totalOpen = openBraces;
+        let totalClose = closeBraces;
+        
+        // Check subsequent lines for closing braces if needed
+        while (totalOpen > totalClose && j < lines.length - 1) {
+          j++;
+          const nextLine = lines[j].trim();
+          totalOpen += (nextLine.match(/\{/g) || []).length;
+          totalClose += (nextLine.match(/\}/g) || []).length;
+        }
+        
+        if (totalOpen !== totalClose) {
+          return {
+            success: false,
+            error: `Line ${i + 1}: Unmatched braces in return statement`
+          };
+        }
+      }
+    }
+
+    // Simulate Python execution by evaluating mathematical expressions
+    const mathExpressions = code.match(/[\d.]+\s*[\+\-\*\/]\s*[\d.]+/g);
+    if (mathExpressions) {
+      for (const expr of mathExpressions) {
+        try {
+          // Safely evaluate simple mathematical expressions
+          const result = Function(`"use strict"; return (${expr})`)();
+          if (!isFinite(result)) {
+            return {
+              success: false,
+              error: `Invalid mathematical expression: ${expr}`
+            };
+          }
+        } catch (e) {
+          return {
+            success: false,
+            error: `Error in mathematical expression: ${expr}`
+          };
+        }
+      }
+    }
+
+    return { success: true };
+
+  } catch (error) {
+    return {
+      success: false,
+      error: `Python syntax error: ${error}`
     };
   }
 }
@@ -103,7 +190,7 @@ function parsePIDParameters(code: string): PIDParams | null {
 
     // Check if we got valid values
     const hasValidValues = Object.values(pidParams).every(axis => 
-      Object.values(axis).every(value => !isNaN(value) && value >= 0)
+      Object.values(axis).every(value => typeof value === 'number' && !isNaN(value) && value >= 0)
     );
 
     return hasValidValues ? pidParams : null;
@@ -121,7 +208,7 @@ function validatePIDParams(params: PIDParams): { valid: boolean; error?: string 
     for (const pidType of pidTypes) {
       const value = params[axis][pidType];
       
-      if (isNaN(value) || value < 0) {
+      if (typeof value !== 'number' || isNaN(value) || value < 0) {
         return {
           valid: false,
           error: `Invalid ${pidType} value for ${axis}: ${value}. Must be a positive number.`
