@@ -62,14 +62,15 @@ executeDroneCommands();`;
 
     // Execute the drone commands
     try {
-      const executeFunction = new Function('drone', 'console', `
+      const executeFunction = new Function('drone', 'console', 'THREE', `
         "use strict";
         ${wrappedCode}
       `);
       
-      // Execute with global drone instance and console
+      // Execute with global drone instance, console, and THREE
       if (typeof window !== 'undefined' && (window as any).drone) {
-        executeFunction((window as any).drone, console);
+        const THREE = (window as any).THREE;
+        executeFunction((window as any).drone, console, THREE);
         console.log("✅ Drone commands executed successfully");
         
         return {
