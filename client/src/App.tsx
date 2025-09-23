@@ -11,8 +11,9 @@ import RetractableWindControls from "./components/RetractableWindControls";
 import ErrorBoundary from "./components/ErrorBoundary";
 import WebGLFallback from "./components/WebGLFallback";
 import { Button } from "./components/ui/button";
-import { Settings, Wind, BarChart3, Code, ChevronLeft, ChevronRight } from "lucide-react";
+import { Settings, Wind, BarChart3, Code, ChevronLeft, ChevronRight, Terminal, ChevronUp } from "lucide-react";
 import DraggableWindow from "./components/DraggableWindow";
+import Console from "./components/Console";
 import "@fontsource/inter";
 
 // Define control keys for the drone
@@ -104,6 +105,7 @@ function createWebGLRenderer(canvas: HTMLCanvasElement | OffscreenCanvas): THREE
 
 function App() {
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
+  const [bottomPanelOpen, setBottomPanelOpen] = useState(false);
   const [environmentPanelOpen, setEnvironmentPanelOpen] = useState(false);
   const [windPanelOpen, setWindPanelOpen] = useState(false);
   const [controlPanelOpen, setControlPanelOpen] = useState(false);
@@ -117,13 +119,23 @@ function App() {
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative', background: '#0a0a0a' }}>
       <KeyboardControls map={keyMap}>
-        {/* Main Layout Container */}
+        {/* Main Layout Container - Column Layout */}
         <div style={{ 
           display: 'flex', 
+          flexDirection: 'column',
           width: '100%', 
           height: '100%', 
           position: 'relative' 
         }}>
+          
+          {/* Top Area - Horizontal Layout with Left Panel + Central Canvas */}
+          <div style={{ 
+            display: 'flex', 
+            flex: 1,
+            width: '100%',
+            height: bottomPanelOpen ? 'calc(100% - 200px)' : '100%',
+            position: 'relative' 
+          }}>
           
           {/* Left Panel - Code Editor (Collapsible) */}
           {leftPanelOpen && (
@@ -261,42 +273,103 @@ function App() {
                 Data
               </Button>
             </div>
+
+            {/* Console Toggle Button (when collapsed) */}
+            {!bottomPanelOpen && (
+              <div style={{ 
+                position: 'absolute', 
+                bottom: '10px', 
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 20 
+              }}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setBottomPanelOpen(true)}
+                  style={{ 
+                    color: '#888', 
+                    background: 'rgba(0,0,0,0.7)',
+                    border: '1px solid rgba(255,255,255,0.1)'
+                  }}
+                >
+                  <Terminal className="h-4 w-4 mr-2" />
+                  Console
+                </Button>
+              </div>
+            )}
           </div>
         </div>
+          
+        {/* Bottom Panel - Console (Always mounted but conditionally visible) */}
+        <div style={{ 
+          width: '100%', 
+          height: bottomPanelOpen ? '200px' : '0px',
+          background: 'rgba(20, 20, 20, 0.95)',
+          borderTop: bottomPanelOpen ? '1px solid rgba(255, 255, 255, 0.1)' : 'none',
+          position: 'relative',
+          zIndex: 10,
+          overflow: 'hidden',
+          transition: 'height 0.3s ease'
+        }}>
+          {bottomPanelOpen && (
+            <div style={{ 
+              position: 'absolute', 
+              top: '10px', 
+              right: '10px', 
+              zIndex: 11 
+            }}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setBottomPanelOpen(false)}
+                style={{ 
+                  color: '#888', 
+                  background: 'rgba(0,0,0,0.3)',
+                  border: '1px solid rgba(255,255,255,0.1)'
+                }}
+              >
+                <ChevronUp className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+          <Console />
+        </div>
+          
+          {/* Draggable Windows */}
+          <DraggableWindow
+            title="Environment Editor"
+            isOpen={environmentPanelOpen}
+            onClose={() => setEnvironmentPanelOpen(false)}
+            initialPosition={{ x: typeof window !== 'undefined' ? window.innerWidth - 420 : 800, y: 100 }}
+            width={400}
+            height={500}
+          >
+            <EnvironmentEditor />
+          </DraggableWindow>
 
-        {/* Draggable Windows */}
-        <DraggableWindow
-          title="Environment Editor"
-          isOpen={environmentPanelOpen}
-          onClose={() => setEnvironmentPanelOpen(false)}
-          initialPosition={{ x: typeof window !== 'undefined' ? window.innerWidth - 420 : 800, y: 100 }}
-          width={400}
-          height={500}
-        >
-          <EnvironmentEditor />
-        </DraggableWindow>
+          <DraggableWindow
+            title="Wind Controls"
+            isOpen={windPanelOpen}
+            onClose={() => setWindPanelOpen(false)}
+            initialPosition={{ x: typeof window !== 'undefined' ? window.innerWidth - 420 : 800, y: 150 }}
+            width={400}
+            height={400}
+          >
+            <WindControls />
+          </DraggableWindow>
 
-        <DraggableWindow
-          title="Wind Controls"
-          isOpen={windPanelOpen}
-          onClose={() => setWindPanelOpen(false)}
-          initialPosition={{ x: typeof window !== 'undefined' ? window.innerWidth - 420 : 800, y: 150 }}
-          width={400}
-          height={400}
-        >
-          <WindControls />
-        </DraggableWindow>
-
-        <DraggableWindow
-          title="Drone Data Panel"
-          isOpen={controlPanelOpen}
-          onClose={() => setControlPanelOpen(false)}
-          initialPosition={{ x: typeof window !== 'undefined' ? window.innerWidth - 420 : 800, y: 200 }}
-          width={400}
-          height={600}
-        >
-          <ControlPanel />
-        </DraggableWindow>
+          <DraggableWindow
+            title="Drone Data Panel"
+            isOpen={controlPanelOpen}
+            onClose={() => setControlPanelOpen(false)}
+            initialPosition={{ x: typeof window !== 'undefined' ? window.innerWidth - 420 : 800, y: 200 }}
+            width={400}
+            height={600}
+          >
+            <ControlPanel />
+          </DraggableWindow>
+        </div>
       </KeyboardControls>
     </div>
   );
