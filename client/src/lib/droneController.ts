@@ -25,6 +25,7 @@ export interface MovementTarget {
   heading?: number;
   pitch?: number;
   roll?: number;
+  throttle?: number;
 }
 
 /**
@@ -132,6 +133,9 @@ export class DroneController {
     return new Promise((resolve, reject) => {
       const radians = (degrees * Math.PI) / 180;
       
+      this.cancelCurrentCommand();
+      this.isAutopilot = true;
+      
       const command: DroneCommand = {
         id: `setPitch_${Date.now()}`,
         type: 'setPitch',
@@ -153,6 +157,9 @@ export class DroneController {
   async setRoll(degrees: number): Promise<void> {
     return new Promise((resolve, reject) => {
       const radians = (degrees * Math.PI) / 180;
+      
+      this.cancelCurrentCommand();
+      this.isAutopilot = true;
       
       const command: DroneCommand = {
         id: `setRoll_${Date.now()}`,
@@ -176,6 +183,9 @@ export class DroneController {
     return new Promise((resolve, reject) => {
       const radians = (degrees * Math.PI) / 180;
       
+      this.cancelCurrentCommand();
+      this.isAutopilot = true;
+      
       const command: DroneCommand = {
         id: `setYaw_${Date.now()}`,
         type: 'setYaw',
@@ -198,6 +208,9 @@ export class DroneController {
     return new Promise((resolve, reject) => {
       const throttle = Math.max(-1, Math.min(1, percentage / 100));
       
+      this.cancelCurrentCommand();
+      this.isAutopilot = true;
+      
       const command: DroneCommand = {
         id: `setThrottle_${Date.now()}`,
         type: 'setThrottle',
@@ -208,6 +221,8 @@ export class DroneController {
         timeout: 1000
       };
       
+      // Add throttle target to maintain the throttle level
+      this.targets.throttle = throttle;
       this.executeCommand(command);
     });
   }
@@ -293,12 +308,12 @@ export class DroneController {
     // Check command timeout
     this.checkCommandTimeout();
     
-    if (!this.isAutopilot || !this.currentCommand) {
+    if (!this.isAutopilot) {
       // Use manual controls when not in autopilot mode
       return manualControls;
     }
 
-    // Generate autopilot setpoints based on targets
+    // Generate autopilot setpoints based on targets when in autopilot mode
     const setpoints = this.calculateAutopilotSetpoints();
     
     // Check if command is complete
@@ -315,8 +330,12 @@ export class DroneController {
     const droneStore = useDrone.getState();
     const setpoints: PIDSetpoints = { pitch: 0, roll: 0, yaw: 0, throttle: 0 };
     
-    // Altitude control
-    if (this.targets.altitude !== undefined) {
+    // Direct throttle control (takes priority over altitude control)
+    if (this.targets.throttle !== undefined) {
+      setpoints.throttle = this.targets.throttle;
+    }
+    // Altitude control (when no direct throttle is set)
+    else if (this.targets.altitude !== undefined) {
       const altitudeError = this.targets.altitude - droneStore.position.y;
       setpoints.throttle = Math.max(-1, Math.min(1, altitudeError * 2));
     }
@@ -340,7 +359,7 @@ export class DroneController {
       setpoints.yaw = Math.max(-1, Math.min(1, headingError * 2));
     }
     
-    // Direct angle control
+    // Direct angle control (takes priority over position-based control)
     if (this.targets.pitch !== undefined) {
       setpoints.pitch = this.targets.pitch;
     }
@@ -380,29 +399,40 @@ export class DroneController {
         break;
         
       case 'setPitch':
+        // Check if pitch target is achieved and maintained
+        isComplete = Math.abs(droneStore.rotation.x - (this.targets.pitch || 0)) < this.options.angleTolerance;
+        break;
+        
       case 'setRoll':
+        // Check if roll target is achieved and maintained  
+        isComplete = Math.abs(droneStore.rotation.z - (this.targets.roll || 0)) < this.options.angleTolerance;
+        break;
+        
       case 'setYaw':
-        // Consider angle commands complete immediately for now
-        isComplete = true;
+        // Check if yaw target is achieved and maintained
+        isComplete = Math.abs(droneStore.rotation.y - (this.targets.heading || 0)) < this.options.angleTolerance;
         break;
         
       case 'setThrottle':
+        // Throttle commands resolve immediately after setting the target
         isComplete = true;
         break;
     }
     
     if (isComplete) {
+      const commandType = this.currentCommand.type;
       this.currentCommand.resolve(true);
       this.currentCommand = null;
       
-      // Return to hover mode after completing movement commands
-      if (this.isAutopilot) {
+      // Only return to hover mode for movement commands, not for persistent commands
+      if (this.isAutopilot && (commandType === 'moveTo' || commandType === 'takeoff' || commandType === 'land')) {
         this.targets = {
           position: droneStore.position.clone(),
           altitude: droneStore.position.y,
           heading: droneStore.rotation.y
         };
       }
+      // For angle and throttle commands, keep the targets persistent until manually cancelled
     }
   }
 
