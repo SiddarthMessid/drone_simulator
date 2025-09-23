@@ -1,7 +1,23 @@
 import { useDrone } from "../lib/stores/useDrone";
+import { gamepadController } from "../lib/gamepadController";
+import { useEffect, useState } from "react";
 
 export default function ControlPanel() {
   const { telemetry, pidParams } = useDrone();
+  const [gamepadConnected, setGamepadConnected] = useState(false);
+  const [gamepadInfo, setGamepadInfo] = useState("No controller connected");
+  
+  useEffect(() => {
+    const updateGamepadStatus = () => {
+      setGamepadConnected(gamepadController.isConnected());
+      setGamepadInfo(gamepadController.getGamepadInfo());
+    };
+    
+    const interval = setInterval(updateGamepadStatus, 1000);
+    updateGamepadStatus(); // Initial check
+    
+    return () => clearInterval(interval);
+  }, []);
 
   const infoStyle = {
     padding: '8px 0',
@@ -22,10 +38,37 @@ export default function ControlPanel() {
         Drone Control Panel
       </h3>
 
-      {/* Controls Guide */}
+      {/* Gamepad Status */}
       <div style={{ marginBottom: '24px' }}>
         <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#a0a0a0' }}>
-          6-Channel Control System:
+          🎮 Controller Status:
+        </h4>
+        <div style={{ fontSize: '12px', lineHeight: '1.5' }}>
+          <div style={{ 
+            color: gamepadConnected ? '#10b981' : '#ef4444',
+            fontWeight: '600',
+            marginBottom: '8px'
+          }}>
+            {gamepadConnected ? '✅ Connected' : '❌ Not Connected'}
+          </div>
+          <div style={{ color: '#b0b0b0', fontSize: '11px' }}>
+            {gamepadInfo}
+          </div>
+          {gamepadConnected && (
+            <div style={{ marginTop: '8px', fontSize: '11px', color: '#d0d0d0' }}>
+              <div><strong>A:</strong> Takeoff | <strong>B:</strong> Land | <strong>X:</strong> Hover | <strong>Y:</strong> Toggle Mode</div>
+              <div><strong>Left Stick:</strong> Pitch/Roll | <strong>Right Stick:</strong> Yaw/Throttle</div>
+              <div><strong>LB:</strong> Throttle Down | <strong>RB:</strong> Throttle Up</div>
+              <div><strong>LT:</strong> Fine Control | <strong>RT:</strong> Boost Control</div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Keyboard Controls Guide */}
+      <div style={{ marginBottom: '24px' }}>
+        <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#a0a0a0' }}>
+          ⌨️ Keyboard Controls:
         </h4>
         <div style={{ fontSize: '12px', color: '#d0d0d0', lineHeight: '1.5' }}>
           <div><strong>W/S:</strong> Pitch Forward/Backward</div>
