@@ -3,7 +3,8 @@ import * as THREE from "three";
 import { useEnvironment } from "../lib/stores/useEnvironment";
 
 export default function Environment() {
-  const { obstacles, environmentSize } = useEnvironment();
+  const { environmentSize, getAllObstacles } = useEnvironment();
+  const allObstacles = getAllObstacles();
   const grassTexture = useTexture("/textures/grass.png");
   
   // Configure texture repeat
@@ -56,21 +57,8 @@ export default function Environment() {
       {/* Reference Grid */}
       <gridHelper args={[100, 50, "#444444", "#222222"]} position={[0, -0.45, 0]} />
 
-      {/* Default Obstacles for navigation practice */}
-      {[
-        { pos: [15, 5, 15], size: [2, 10, 2] },
-        { pos: [-15, 3, -15], size: [3, 6, 3] },
-        { pos: [20, 4, -20], size: [1.5, 8, 1.5] },
-        { pos: [-25, 6, 10], size: [2.5, 12, 2.5] }
-      ].map((obstacle, index) => (
-        <mesh key={`default-${index}`} position={obstacle.pos as [number, number, number]} castShadow receiveShadow>
-          <boxGeometry args={obstacle.size as [number, number, number]} />
-          <meshPhongMaterial color="#666666" />
-        </mesh>
-      ))}
-
-      {/* Custom User-Added Obstacles */}
-      {obstacles.map((obstacle) => (
+      {/* All Obstacles (Default + User-Added) */}
+      {allObstacles.map((obstacle) => (
         <mesh 
           key={obstacle.id} 
           position={[obstacle.position.x, obstacle.position.y, obstacle.position.z]} 

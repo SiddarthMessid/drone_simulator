@@ -8,6 +8,8 @@ import Environment from "./Environment";
 // Wind visualization will be handled inline
 import { useDrone } from "../lib/stores/useDrone";
 import { useWind } from "../lib/stores/useWind";
+import { useEnvironment } from "../lib/stores/useEnvironment";
+import { useAudio } from "../lib/stores/useAudio";
 import { PIDController } from "../lib/pidController";
 import { DronePhysics } from "../lib/dronePhysics";
 
@@ -27,6 +29,8 @@ export default function DroneSimulation() {
   } = useDrone();
   
   const { getWindAtPosition, windSources } = useWind();
+  const { getObstacleAABBs } = useEnvironment();
+  const { playHit } = useAudio();
   
   // Initialize PID controllers and physics
   const pidController = useRef(new PIDController(pidParams));
@@ -68,13 +72,24 @@ export default function DroneSimulation() {
     );
     const wind = new THREE.Vector3(windAtPosition.x, windAtPosition.y, windAtPosition.z);
 
-    // Update physics
-    const newState = dronePhysics.current.update(
+    // Get obstacle AABBs for collision detection
+    const obstacleAABBs = getObstacleAABBs();
+
+    // Update physics with collision detection
+    const physicsResult = dronePhysics.current.update(
       { position, rotation, velocity, angularVelocity },
       pidOutputs,
       wind,
-      delta
+      delta,
+      obstacleAABBs
     );
+
+    const { newState, collision } = physicsResult;
+
+    // Play hit sound on collision
+    if (collision.collided) {
+      playHit();
+    }
 
     // Update drone state
     updateDrone(newState);
