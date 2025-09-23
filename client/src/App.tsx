@@ -1,12 +1,15 @@
 import { Canvas } from "@react-three/fiber";
 import { KeyboardControls } from "@react-three/drei";
 import { Suspense } from "react";
+import * as THREE from "three";
 import DroneSimulation from "./components/DroneSimulation";
 import CodeEditor from "./components/CodeEditor";
 import ControlPanel from "./components/ControlPanel";
 import WindControls from "./components/WindControls";
 import EnvironmentEditor from "./components/EnvironmentEditor";
 import RetractableWindControls from "./components/RetractableWindControls";
+import ErrorBoundary from "./components/ErrorBoundary";
+import WebGLFallback from "./components/WebGLFallback";
 import "@fontsource/inter";
 
 // Define control keys for the drone
@@ -32,7 +35,77 @@ const keyMap = [
   { name: Controls.throttleDown, keys: ['ArrowDown'] },
 ];
 
+// Check WebGL availability
+function isWebGLAvailable(): boolean {
+  try {
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    return !!context;
+  } catch (e) {
+    return false;
+  }
+}
+
+// Conservative WebGL renderer factory with fallback
+function createWebGLRenderer(canvas: HTMLCanvasElement | OffscreenCanvas): THREE.WebGLRenderer {
+  try {
+    // Try WebGL2 first with conservative settings
+    return new THREE.WebGLRenderer({
+      canvas,
+      antialias: false,
+      alpha: true,
+      depth: true,
+      stencil: false,
+      powerPreference: 'low-power',
+      failIfMajorPerformanceCaveat: false,
+      preserveDrawingBuffer: false
+    });
+  } catch (error) {
+    console.warn('WebGL2 failed, attempting WebGL1 fallback:', error);
+    try {
+      // Only attempt manual context creation for HTMLCanvasElement
+      if (canvas instanceof HTMLCanvasElement) {
+        // Force WebGL1 context
+        const gl = canvas.getContext('webgl', {
+          antialias: false,
+          alpha: true,
+          depth: true,
+          stencil: false,
+          powerPreference: 'low-power',
+          failIfMajorPerformanceCaveat: false,
+          preserveDrawingBuffer: false
+        });
+        
+        if (!gl) {
+          throw new Error('WebGL1 context creation failed');
+        }
+        
+        return new THREE.WebGLRenderer({
+          canvas,
+          context: gl,
+          antialias: false,
+          alpha: true,
+          depth: true,
+          stencil: false,
+          powerPreference: 'low-power'
+        });
+      } else {
+        throw new Error('OffscreenCanvas WebGL1 fallback not supported');
+      }
+    } catch (fallbackError) {
+      console.error('Both WebGL2 and WebGL1 failed:', fallbackError);
+      throw fallbackError;
+    }
+  }
+}
+
 function App() {
+  // Check WebGL availability early
+  if (!isWebGLAvailable()) {
+    console.warn('WebGL not available, showing fallback UI');
+    return <WebGLFallback />;
+  }
+
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative', background: '#0a0a0a' }}>
       <KeyboardControls map={keyMap}>
@@ -56,21 +129,25 @@ function App() {
           </div>
         </div>
 
-        {/* 3D Canvas */}
-        <Canvas
-          camera={{
-            position: [0, 10, 20],
-            fov: 60,
-            near: 0.1,
-            far: 1000
-          }}
-          shadows
-          style={{ position: 'absolute', top: 0, left: 0, zIndex: 1 }}
-        >
-          <Suspense fallback={null}>
-            <DroneSimulation />
-          </Suspense>
-        </Canvas>
+        {/* 3D Canvas with Error Boundary */}
+        <ErrorBoundary>
+          <Canvas
+            camera={{
+              position: [0, 10, 20],
+              fov: 60,
+              near: 0.1,
+              far: 1000
+            }}
+            shadows={true}
+            dpr={[1, 1]}
+            gl={createWebGLRenderer}
+            style={{ position: 'absolute', top: 0, left: 0, zIndex: 1 }}
+          >
+            <Suspense fallback={null}>
+              <DroneSimulation />
+            </Suspense>
+          </Canvas>
+        </ErrorBoundary>
 
         {/* UI Overlays */}
         <div style={{ 

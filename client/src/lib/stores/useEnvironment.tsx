@@ -30,7 +30,9 @@ export const useEnvironment = create<EnvironmentStore>((set, get) => ({
   addObstacle: (obstacle: Omit<Obstacle, 'id'>) => {
     const id = `obstacle_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const newObstacle: Obstacle = { ...obstacle, id };
+    console.log("Adding obstacle:", newObstacle);
     set(state => ({ obstacles: [...state.obstacles, newObstacle] }));
+    console.log("Current obstacles count:", get().obstacles.length);
   },
 
   removeObstacle: (id: string) => {
