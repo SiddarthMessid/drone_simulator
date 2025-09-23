@@ -10,9 +10,9 @@ import EnvironmentEditor from "./components/EnvironmentEditor";
 import RetractableWindControls from "./components/RetractableWindControls";
 import ErrorBoundary from "./components/ErrorBoundary";
 import WebGLFallback from "./components/WebGLFallback";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "./components/ui/sheet";
 import { Button } from "./components/ui/button";
 import { Settings, Wind, BarChart3, Code, ChevronLeft, ChevronRight } from "lucide-react";
+import DraggableWindow from "./components/DraggableWindow";
 import "@fontsource/inter";
 
 // Define control keys for the drone
@@ -219,89 +219,84 @@ function App() {
               zIndex: 20 
             }}>
               
-              {/* Environment Editor Sheet */}
-              <Sheet open={environmentPanelOpen} onOpenChange={setEnvironmentPanelOpen}>
-                <SheetTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onMouseEnter={() => setEnvironmentPanelOpen(true)}
-                    style={{ 
-                      color: '#888', 
-                      background: 'rgba(0,0,0,0.7)',
-                      border: '1px solid rgba(255,255,255,0.1)'
-                    }}
-                  >
-                    <Settings className="h-4 w-4 mr-2" />
-                    Environment
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="right" className="w-[400px] bg-zinc-900 border-zinc-700">
-                  <SheetHeader>
-                    <SheetTitle className="text-white">Environment Editor</SheetTitle>
-                  </SheetHeader>
-                  <div className="mt-6">
-                    <EnvironmentEditor />
-                  </div>
-                </SheetContent>
-              </Sheet>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setEnvironmentPanelOpen(true)}
+                style={{ 
+                  color: '#888', 
+                  background: 'rgba(0,0,0,0.7)',
+                  border: '1px solid rgba(255,255,255,0.1)'
+                }}
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Environment
+              </Button>
 
-              {/* Wind Controls Sheet */}
-              <Sheet open={windPanelOpen} onOpenChange={setWindPanelOpen}>
-                <SheetTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onMouseEnter={() => setWindPanelOpen(true)}
-                    style={{ 
-                      color: '#888', 
-                      background: 'rgba(0,0,0,0.7)',
-                      border: '1px solid rgba(255,255,255,0.1)'
-                    }}
-                  >
-                    <Wind className="h-4 w-4 mr-2" />
-                    Wind
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="right" className="w-[400px] bg-zinc-900 border-zinc-700">
-                  <SheetHeader>
-                    <SheetTitle className="text-white">Wind Controls</SheetTitle>
-                  </SheetHeader>
-                  <div className="mt-6">
-                    <WindControls />
-                  </div>
-                </SheetContent>
-              </Sheet>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setWindPanelOpen(true)}
+                style={{ 
+                  color: '#888', 
+                  background: 'rgba(0,0,0,0.7)',
+                  border: '1px solid rgba(255,255,255,0.1)'
+                }}
+              >
+                <Wind className="h-4 w-4 mr-2" />
+                Wind
+              </Button>
 
-              {/* Control Panel Sheet */}
-              <Sheet open={controlPanelOpen} onOpenChange={setControlPanelOpen}>
-                <SheetTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onMouseEnter={() => setControlPanelOpen(true)}
-                    style={{ 
-                      color: '#888', 
-                      background: 'rgba(0,0,0,0.7)',
-                      border: '1px solid rgba(255,255,255,0.1)'
-                    }}
-                  >
-                    <BarChart3 className="h-4 w-4 mr-2" />
-                    Data
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="right" className="w-[400px] bg-zinc-900 border-zinc-700">
-                  <SheetHeader>
-                    <SheetTitle className="text-white">Drone Control Panel</SheetTitle>
-                  </SheetHeader>
-                  <div className="mt-6">
-                    <ControlPanel />
-                  </div>
-                </SheetContent>
-              </Sheet>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setControlPanelOpen(true)}
+                style={{ 
+                  color: '#888', 
+                  background: 'rgba(0,0,0,0.7)',
+                  border: '1px solid rgba(255,255,255,0.1)'
+                }}
+              >
+                <BarChart3 className="h-4 w-4 mr-2" />
+                Data
+              </Button>
             </div>
           </div>
         </div>
+
+        {/* Draggable Windows */}
+        <DraggableWindow
+          title="Environment Editor"
+          isOpen={environmentPanelOpen}
+          onClose={() => setEnvironmentPanelOpen(false)}
+          initialPosition={{ x: typeof window !== 'undefined' ? window.innerWidth - 420 : 800, y: 100 }}
+          width={400}
+          height={500}
+        >
+          <EnvironmentEditor />
+        </DraggableWindow>
+
+        <DraggableWindow
+          title="Wind Controls"
+          isOpen={windPanelOpen}
+          onClose={() => setWindPanelOpen(false)}
+          initialPosition={{ x: typeof window !== 'undefined' ? window.innerWidth - 420 : 800, y: 150 }}
+          width={400}
+          height={400}
+        >
+          <WindControls />
+        </DraggableWindow>
+
+        <DraggableWindow
+          title="Drone Data Panel"
+          isOpen={controlPanelOpen}
+          onClose={() => setControlPanelOpen(false)}
+          initialPosition={{ x: typeof window !== 'undefined' ? window.innerWidth - 420 : 800, y: 200 }}
+          width={400}
+          height={600}
+        >
+          <ControlPanel />
+        </DraggableWindow>
       </KeyboardControls>
     </div>
   );
