@@ -3,17 +3,106 @@ import { PIDParams } from "./pidController";
 interface CompilationResult {
   success: boolean;
   pidParams?: PIDParams;
+  droneCommands?: Function;
   error?: string;
+  mode?: 'pid' | 'drone';
 }
 
 export function compileCode(code: string, telemetry?: any): CompilationResult {
   try {
-    console.log("Compiling Python-like code:", code);
+    console.log("Compiling code:", code);
 
-    // Inject telemetry variables into the code execution context
-    let processedCode = code;
-    if (telemetry) {
-      const telemetryVars = `
+    // Detect if this is drone command code or PID configuration
+    const isDroneCommands = detectDroneCommands(code);
+    
+    if (isDroneCommands) {
+      console.log("Detected drone commands - executing JavaScript");
+      return compileDroneCommands(code);
+    } else {
+      console.log("Detected PID configuration - compiling Python-like code");
+      return compilePIDConfiguration(code, telemetry);
+    }
+
+  } catch (error) {
+    return {
+      success: false,
+      error: `Compilation error: ${error}`
+    };
+  }
+}
+
+function detectDroneCommands(code: string): boolean {
+  const droneKeywords = [
+    'drone.takeoff', 'drone.land', 'drone.hover',
+    'drone.setPitch', 'drone.setRoll', 'drone.setYaw', 'drone.setThrottle',
+    'drone.moveTo', 'drone.dir', 'drone.enableManualControl',
+    'await ', 'async ', 'Promise', '.then('
+  ];
+  
+  return droneKeywords.some(keyword => code.includes(keyword));
+}
+
+function compileDroneCommands(code: string): CompilationResult {
+  try {
+    // Validate JavaScript syntax basics
+    if (code.includes('await ') && !code.includes('async ')) {
+      return {
+        success: false,
+        error: "Missing 'async' keyword for function that uses 'await'"
+      };
+    }
+
+    // Create a safe execution function
+    const wrappedCode = code.includes('async function') || code.includes('async ') 
+      ? code 
+      : `async function executeDroneCommands() {
+  ${code}
+}
+executeDroneCommands();`;
+
+    // Execute the drone commands
+    try {
+      const executeFunction = new Function('drone', 'console', `
+        "use strict";
+        ${wrappedCode}
+      `);
+      
+      // Execute with global drone instance and console
+      if (typeof window !== 'undefined' && (window as any).drone) {
+        executeFunction((window as any).drone, console);
+        console.log("✅ Drone commands executed successfully");
+        
+        return {
+          success: true,
+          mode: 'drone' as const,
+          droneCommands: executeFunction
+        };
+      } else {
+        return {
+          success: false,
+          error: "Drone controller not available. Make sure the simulation is running."
+        };
+      }
+    } catch (execError) {
+      return {
+        success: false,
+        error: `Execution error: ${execError}`
+      };
+    }
+
+  } catch (error) {
+    return {
+      success: false,
+      error: `JavaScript syntax error: ${error}`
+    };
+  }
+}
+
+function compilePIDConfiguration(code: string, telemetry?: any): CompilationResult {
+  // Inject telemetry variables into the code execution context
+  let processedCode = code;
+  if (telemetry) {
+    const telemetryVars = `
 # Injected telemetry variables
 altitude = ${telemetry.altitude || 0}
 speed = ${telemetry.speed || 0}
@@ -23,48 +112,42 @@ yaw = ${telemetry.yaw || 0}
 throttle = ${telemetry.throttle || 0}
 
 `;
-      processedCode = telemetryVars + code;
-    }
+    processedCode = telemetryVars + code;
+  }
 
-    // Create a safe execution environment that mimics Python
-    const compilationResult = executePythonLikeCode(processedCode);
-    
-    if (!compilationResult.success) {
-      return compilationResult;
-    }
+  // Create a safe execution environment that mimics Python
+  const compilationResult = executePythonLikeCode(processedCode);
+  
+  if (!compilationResult.success) {
+    return compilationResult;
+  }
 
-    // Parse the PID parameters from the executed result
-    const pidParams = parsePIDParameters(processedCode);
-    
-    if (!pidParams) {
-      return {
-        success: false,
-        error: "Failed to extract PID parameters from get_pid_parameters() function"
-      };
-    }
-
-    // Validate parameters
-    const validation = validatePIDParams(pidParams);
-    if (!validation.valid) {
-      return {
-        success: false,
-        error: validation.error
-      };
-    }
-
-    console.log("Compilation successful. PID parameters:", pidParams);
-
-    return {
-      success: true,
-      pidParams
-    };
-
-  } catch (error) {
+  // Parse the PID parameters from the executed result
+  const pidParams = parsePIDParameters(processedCode);
+  
+  if (!pidParams) {
     return {
       success: false,
-      error: `Compilation error: ${error}`
+      error: "Failed to extract PID parameters from get_pid_parameters() function"
     };
   }
+
+  // Validate parameters
+  const validation = validatePIDParams(pidParams);
+  if (!validation.valid) {
+    return {
+      success: false,
+      error: validation.error
+    };
+  }
+
+  console.log("Compilation successful. PID parameters:", pidParams);
+
+  return {
+    success: true,
+    mode: 'pid' as const,
+    pidParams
+  };
 }
 
 function executePythonLikeCode(code: string): CompilationResult {

@@ -118,11 +118,17 @@ def custom_gain_adjustment(base_gain, current_altitude, current_speed):
       const result = compileCode(code, telemetry);
       console.log("Compilation result:", result);
       
-      if (result.success && result.pidParams) {
-        updatePIDParams(result.pidParams);
-        console.log("✅ PID parameters successfully updated:", result.pidParams);
+      if (result.success) {
+        if (result.mode === 'pid' && result.pidParams) {
+          updatePIDParams(result.pidParams);
+          console.log("✅ PID parameters successfully updated:", result.pidParams);
+          setSuccessMessage("✅ PID parameters compiled and updated successfully!");
+        } else if (result.mode === 'drone') {
+          console.log("✅ Drone commands executed successfully");
+          setSuccessMessage("✅ Drone commands executed successfully!");
+        }
+        
         setError(""); // Clear any previous errors
-        setSuccessMessage("✅ Code compiled and PID parameters updated successfully!");
         
         // Clear success message after 3 seconds
         setTimeout(() => {
@@ -175,10 +181,10 @@ def custom_gain_adjustment(base_gain, current_altitude, current_speed):
         background: 'rgba(30, 30, 30, 0.9)'
       }}>
         <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: '600' }}>
-          PID Controller Code
+          Drone Control Code
         </h3>
         <p style={{ margin: 0, fontSize: '12px', color: '#a0a0a0' }}>
-          Modify the PID parameters and custom logic below
+          Write drone commands (JavaScript) or PID parameters (Python-like)
         </p>
       </div>
 
