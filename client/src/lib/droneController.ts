@@ -113,7 +113,7 @@ export class DroneController {
         resolve,
         reject,
         startTime: Date.now(),
-        timeout: 1000 // 1 second to stabilize
+        timeout: 1500 // 1.5 second timeout to allow for completion
       };
       
       this.targets = {

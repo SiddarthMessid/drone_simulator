@@ -20,9 +20,10 @@ export default function DroneSimulation() {
   const cameraRef = useRef<THREE.Camera>(null);
   const [, getControls] = useKeyboardControls<Controls>();
   
-  // Make drone controller globally accessible for user scripts
+  // Make drone controller and THREE globally accessible for user scripts
   if (typeof window !== 'undefined') {
     (window as any).drone = drone;
+    (window as any).THREE = THREE;
   }
   
   const { 
