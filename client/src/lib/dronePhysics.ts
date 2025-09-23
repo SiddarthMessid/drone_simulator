@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { AABB } from "./stores/useEnvironment";
 
 export interface DroneState {
   position: THREE.Vector3;
@@ -14,6 +15,11 @@ export interface MotorOutputs {
   throttle: number;
 }
 
+export interface CollisionResult {
+  collided: boolean;
+  axis: 'x' | 'y' | 'z' | null;
+}
+
 export class DronePhysics {
   private mass: number = 1.5; // kg
   private inertia: THREE.Vector3 = new THREE.Vector3(0.03, 0.03, 0.05); // kg⋅m²
@@ -21,13 +27,17 @@ export class DronePhysics {
   private angularDrag: number = 0.5;
   private gravity: number = 9.81;
   private maxTilt: number = Math.PI / 3; // 60 degrees max tilt
+  
+  // Drone collision box half-extents
+  private readonly DRONE_HALF_EXTENTS = new THREE.Vector3(0.6, 0.3, 0.6);
 
   update(
     currentState: DroneState, 
     motorOutputs: MotorOutputs, 
     windForce: THREE.Vector3, 
-    deltaTime: number
-  ): DroneState {
+    deltaTime: number,
+    obstacles: AABB[] = []
+  ): { newState: DroneState; collision: CollisionResult } {
     const dt = Math.min(deltaTime, 0.02); // Cap delta time for stability
     
     // Create new state
@@ -67,10 +77,19 @@ export class DronePhysics {
     // Apply drag
     newState.velocity.multiplyScalar(1 - this.drag * dt);
 
-    // Update position
-    newState.position.x += newState.velocity.x * dt;
-    newState.position.y += newState.velocity.y * dt;
-    newState.position.z += newState.velocity.z * dt;
+    // Calculate proposed movement
+    const proposedPosition = newState.position.clone();
+    const deltaPosition = new THREE.Vector3(
+      newState.velocity.x * dt,
+      newState.velocity.y * dt,
+      newState.velocity.z * dt
+    );
+
+    // Per-axis collision detection and resolution
+    const collision = this.resolveCollisions(proposedPosition, deltaPosition, newState.velocity, obstacles);
+
+    // Apply final position
+    newState.position.copy(proposedPosition);
 
     // Ground collision
     if (newState.position.y < 0.5) {
@@ -82,9 +101,14 @@ export class DronePhysics {
         newState.velocity.multiplyScalar(0.8);
         newState.angularVelocity.multiplyScalar(0.8);
       }
+      
+      if (!collision.collided) {
+        collision.collided = true;
+        collision.axis = 'y';
+      }
     }
 
-    return newState;
+    return { newState, collision };
   }
 
   private calculateForces(
@@ -137,5 +161,82 @@ export class DronePhysics {
     torques.z = motorOutputs.roll * torqueStrength;
 
     return torques;
+  }
+
+  private resolveCollisions(
+    proposedPosition: THREE.Vector3,
+    deltaPosition: THREE.Vector3,
+    velocity: THREE.Vector3,
+    obstacles: AABB[]
+  ): CollisionResult {
+    const collision: CollisionResult = { collided: false, axis: null };
+    
+    // Test per-axis movement: X -> Y -> Z
+    const axes: Array<{axis: 'x' | 'y' | 'z', index: 0 | 1 | 2}> = [
+      { axis: 'x', index: 0 },
+      { axis: 'y', index: 1 },
+      { axis: 'z', index: 2 }
+    ];
+    
+    for (const { axis, index } of axes) {
+      // Move along this axis
+      proposedPosition.setComponent(index, proposedPosition.getComponent(index) + deltaPosition.getComponent(index));
+      
+      // Create drone AABB at new position
+      const droneAABB: AABB = {
+        center: proposedPosition.clone(),
+        half: this.DRONE_HALF_EXTENTS.clone()
+      };
+      
+      // Check collision with all obstacles
+      for (const obstacle of obstacles) {
+        if (this.aabbIntersect(droneAABB, obstacle)) {
+          // Calculate overlap and resolve
+          const overlap = this.calculateOverlap(droneAABB, obstacle, axis);
+          const sign = Math.sign(deltaPosition.getComponent(index));
+          
+          // Push drone out of obstacle
+          proposedPosition.setComponent(
+            index,
+            proposedPosition.getComponent(index) - overlap * sign
+          );
+          
+          // Stop velocity on collision axis
+          velocity.setComponent(index, 0);
+          
+          // Apply tangential damping for sliding effect
+          const dampingFactor = 0.9;
+          for (let i = 0; i < 3; i++) {
+            if (i !== index) {
+              velocity.setComponent(i, velocity.getComponent(i) * dampingFactor);
+            }
+          }
+          
+          collision.collided = true;
+          collision.axis = axis;
+          break; // Only resolve first collision per axis
+        }
+      }
+    }
+    
+    return collision;
+  }
+
+  private aabbIntersect(a: AABB, b: AABB): boolean {
+    return (
+      Math.abs(a.center.x - b.center.x) < (a.half.x + b.half.x) &&
+      Math.abs(a.center.y - b.center.y) < (a.half.y + b.half.y) &&
+      Math.abs(a.center.z - b.center.z) < (a.half.z + b.half.z)
+    );
+  }
+
+  private calculateOverlap(a: AABB, b: AABB, axis: 'x' | 'y' | 'z'): number {
+    const axisMap = { x: 0, y: 1, z: 2 };
+    const index = axisMap[axis];
+    
+    const distance = Math.abs(a.center.getComponent(index) - b.center.getComponent(index));
+    const combinedHalf = a.half.getComponent(index) + b.half.getComponent(index);
+    
+    return combinedHalf - distance;
   }
 }

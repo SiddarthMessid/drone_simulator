@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import * as THREE from "three";
 
 export interface Obstacle {
   id: string;
@@ -8,10 +9,23 @@ export interface Obstacle {
   color: string;
 }
 
+export interface AABB {
+  center: THREE.Vector3;
+  half: THREE.Vector3;
+}
+
 interface EnvironmentSize {
   width: number;
   height: number;
 }
+
+// Default obstacles for navigation practice
+const DEFAULT_OBSTACLES: Obstacle[] = [
+  { id: 'default-1', name: 'Tower 1', position: { x: 15, y: 5, z: 15 }, size: { x: 2, y: 10, z: 2 }, color: '#666666' },
+  { id: 'default-2', name: 'Tower 2', position: { x: -15, y: 3, z: -15 }, size: { x: 3, y: 6, z: 3 }, color: '#666666' },
+  { id: 'default-3', name: 'Tower 3', position: { x: 20, y: 4, z: -20 }, size: { x: 1.5, y: 8, z: 1.5 }, color: '#666666' },
+  { id: 'default-4', name: 'Tower 4', position: { x: -25, y: 6, z: 10 }, size: { x: 2.5, y: 12, z: 2.5 }, color: '#666666' }
+];
 
 interface EnvironmentStore {
   obstacles: Obstacle[];
@@ -21,6 +35,8 @@ interface EnvironmentStore {
   removeObstacle: (id: string) => void;
   updateObstacle: (id: string, updates: Partial<Obstacle>) => void;
   setEnvironmentSize: (size: EnvironmentSize) => void;
+  getAllObstacles: () => Obstacle[];
+  getObstacleAABBs: () => AABB[];
 }
 
 export const useEnvironment = create<EnvironmentStore>((set, get) => ({
@@ -30,9 +46,7 @@ export const useEnvironment = create<EnvironmentStore>((set, get) => ({
   addObstacle: (obstacle: Omit<Obstacle, 'id'>) => {
     const id = `obstacle_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const newObstacle: Obstacle = { ...obstacle, id };
-    console.log("Adding obstacle:", newObstacle);
     set(state => ({ obstacles: [...state.obstacles, newObstacle] }));
-    console.log("Current obstacles count:", get().obstacles.length);
   },
 
   removeObstacle: (id: string) => {
@@ -51,5 +65,17 @@ export const useEnvironment = create<EnvironmentStore>((set, get) => ({
 
   setEnvironmentSize: (size: EnvironmentSize) => {
     set({ environmentSize: size });
+  },
+
+  getAllObstacles: () => {
+    return [...DEFAULT_OBSTACLES, ...get().obstacles];
+  },
+
+  getObstacleAABBs: () => {
+    const allObstacles = [...DEFAULT_OBSTACLES, ...get().obstacles];
+    return allObstacles.map(obstacle => ({
+      center: new THREE.Vector3(obstacle.position.x, obstacle.position.y, obstacle.position.z),
+      half: new THREE.Vector3(obstacle.size.x / 2, obstacle.size.y / 2, obstacle.size.z / 2)
+    }));
   }
 }));
