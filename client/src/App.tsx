@@ -12,7 +12,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import WebGLFallback from "./components/WebGLFallback";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "./components/ui/sheet";
 import { Button } from "./components/ui/button";
-import { Settings, Wind, Gamepad2, Code, ChevronLeft, ChevronRight } from "lucide-react";
+import { Settings, Wind, BarChart3, Code, ChevronLeft, ChevronRight } from "lucide-react";
 import "@fontsource/inter";
 
 // Define control keys for the drone
@@ -225,6 +225,7 @@ function App() {
                   <Button
                     variant="ghost"
                     size="sm"
+                    onMouseEnter={() => setEnvironmentPanelOpen(true)}
                     style={{ 
                       color: '#888', 
                       background: 'rgba(0,0,0,0.7)',
@@ -251,6 +252,7 @@ function App() {
                   <Button
                     variant="ghost"
                     size="sm"
+                    onMouseEnter={() => setWindPanelOpen(true)}
                     style={{ 
                       color: '#888', 
                       background: 'rgba(0,0,0,0.7)',
@@ -277,14 +279,15 @@ function App() {
                   <Button
                     variant="ghost"
                     size="sm"
+                    onMouseEnter={() => setControlPanelOpen(true)}
                     style={{ 
                       color: '#888', 
                       background: 'rgba(0,0,0,0.7)',
                       border: '1px solid rgba(255,255,255,0.1)'
                     }}
                   >
-                    <Gamepad2 className="h-4 w-4 mr-2" />
-                    Controls
+                    <BarChart3 className="h-4 w-4 mr-2" />
+                    Data
                   </Button>
                 </SheetTrigger>
                 <SheetContent side="right" className="w-[400px] bg-zinc-900 border-zinc-700">
