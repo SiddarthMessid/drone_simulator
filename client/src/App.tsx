@@ -1,6 +1,6 @@
 import { Canvas } from "@react-three/fiber";
 import { KeyboardControls } from "@react-three/drei";
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import * as THREE from "three";
 import DroneSimulation from "./components/DroneSimulation";
 import CodeEditor from "./components/CodeEditor";
@@ -10,6 +10,9 @@ import EnvironmentEditor from "./components/EnvironmentEditor";
 import RetractableWindControls from "./components/RetractableWindControls";
 import ErrorBoundary from "./components/ErrorBoundary";
 import WebGLFallback from "./components/WebGLFallback";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "./components/ui/sheet";
+import { Button } from "./components/ui/button";
+import { Settings, Wind, Gamepad2, Code, ChevronLeft, ChevronRight } from "lucide-react";
 import "@fontsource/inter";
 
 // Define control keys for the drone
@@ -100,6 +103,11 @@ function createWebGLRenderer(canvas: HTMLCanvasElement | OffscreenCanvas): THREE
 }
 
 function App() {
+  const [leftPanelOpen, setLeftPanelOpen] = useState(true);
+  const [environmentPanelOpen, setEnvironmentPanelOpen] = useState(false);
+  const [windPanelOpen, setWindPanelOpen] = useState(false);
+  const [controlPanelOpen, setControlPanelOpen] = useState(false);
+
   // Check WebGL availability early
   if (!isWebGLAvailable()) {
     console.warn('WebGL not available, showing fallback UI');
@@ -109,85 +117,185 @@ function App() {
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative', background: '#0a0a0a' }}>
       <KeyboardControls map={keyMap}>
-        {/* Top Retractable Panels */}
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 20,
-          pointerEvents: 'auto',
-          display: 'flex',
-          gap: '10px',
-          padding: '10px'
-        }}>
-          <div style={{ flex: 1 }}>
-            <EnvironmentEditor />
-          </div>
-          <div style={{ flex: 1 }}>
-            <RetractableWindControls />
-          </div>
-        </div>
-
-        {/* 3D Canvas with Error Boundary */}
-        <ErrorBoundary>
-          <Canvas
-            camera={{
-              position: [0, 10, 20],
-              fov: 60,
-              near: 0.1,
-              far: 1000
-            }}
-            shadows={true}
-            dpr={[1, 1]}
-            gl={createWebGLRenderer}
-            style={{ position: 'absolute', top: 0, left: 0, zIndex: 1 }}
-          >
-            <Suspense fallback={null}>
-              <DroneSimulation />
-            </Suspense>
-          </Canvas>
-        </ErrorBoundary>
-
-        {/* UI Overlays */}
+        {/* Main Layout Container */}
         <div style={{ 
-          position: 'absolute', 
-          top: 0, 
-          left: 0, 
-          zIndex: 10, 
-          pointerEvents: 'none',
-          width: '100%',
-          height: '100%',
-          display: 'flex'
+          display: 'flex', 
+          width: '100%', 
+          height: '100%', 
+          position: 'relative' 
         }}>
-          {/* Left Panel - Code Editor */}
-          <div style={{ 
-            width: '400px', 
-            height: '100%', 
-            background: 'rgba(20, 20, 20, 0.95)',
-            borderRight: '1px solid rgba(255, 255, 255, 0.1)',
-            pointerEvents: 'auto'
-          }}>
-            <CodeEditor />
-          </div>
+          
+          {/* Left Panel - Code Editor (Collapsible) */}
+          {leftPanelOpen && (
+            <div style={{ 
+              width: '400px', 
+              height: '100%', 
+              background: 'rgba(20, 20, 20, 0.95)',
+              borderRight: '1px solid rgba(255, 255, 255, 0.1)',
+              position: 'relative',
+              zIndex: 10
+            }}>
+              <div style={{ 
+                position: 'absolute', 
+                top: '10px', 
+                right: '10px', 
+                zIndex: 11 
+              }}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setLeftPanelOpen(false)}
+                  style={{ 
+                    color: '#888', 
+                    background: 'rgba(0,0,0,0.3)',
+                    border: '1px solid rgba(255,255,255,0.1)'
+                  }}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+              </div>
+              <CodeEditor />
+            </div>
+          )}
 
-          {/* Right Panel - Controls and Info */}
+          {/* Central Canvas Area */}
           <div style={{ 
             flex: 1, 
-            display: 'flex', 
-            flexDirection: 'column',
-            alignItems: 'flex-end',
-            padding: '20px',
-            gap: '20px'
+            position: 'relative', 
+            overflow: 'hidden' 
           }}>
+            {/* 3D Canvas with Error Boundary */}
+            <ErrorBoundary>
+              <Canvas
+                camera={{
+                  position: [0, 10, 20],
+                  fov: 60,
+                  near: 0.1,
+                  far: 1000
+                }}
+                shadows={true}
+                dpr={[1, 1]}
+                gl={createWebGLRenderer}
+                style={{ width: '100%', height: '100%' }}
+              >
+                <Suspense fallback={null}>
+                  <DroneSimulation />
+                </Suspense>
+              </Canvas>
+            </ErrorBoundary>
+
+            {/* Left Panel Toggle Button (when collapsed) */}
+            {!leftPanelOpen && (
+              <div style={{ 
+                position: 'absolute', 
+                top: '10px', 
+                left: '10px', 
+                zIndex: 20 
+              }}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setLeftPanelOpen(true)}
+                  style={{ 
+                    color: '#888', 
+                    background: 'rgba(0,0,0,0.7)',
+                    border: '1px solid rgba(255,255,255,0.1)'
+                  }}
+                >
+                  <Code className="h-4 w-4 mr-2" />
+                  Code Editor
+                </Button>
+              </div>
+            )}
+
+            {/* Right Panel Toggle Buttons */}
             <div style={{ 
-              width: '350px', 
-              background: 'rgba(20, 20, 20, 0.95)',
-              borderRadius: '8px',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              pointerEvents: 'auto'
+              position: 'absolute', 
+              top: '10px', 
+              right: '10px', 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: '8px', 
+              zIndex: 20 
             }}>
-              <ControlPanel />
+              
+              {/* Environment Editor Sheet */}
+              <Sheet open={environmentPanelOpen} onOpenChange={setEnvironmentPanelOpen}>
+                <SheetTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    style={{ 
+                      color: '#888', 
+                      background: 'rgba(0,0,0,0.7)',
+                      border: '1px solid rgba(255,255,255,0.1)'
+                    }}
+                  >
+                    <Settings className="h-4 w-4 mr-2" />
+                    Environment
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-[400px] bg-zinc-900 border-zinc-700">
+                  <SheetHeader>
+                    <SheetTitle className="text-white">Environment Editor</SheetTitle>
+                  </SheetHeader>
+                  <div className="mt-6">
+                    <EnvironmentEditor />
+                  </div>
+                </SheetContent>
+              </Sheet>
+
+              {/* Wind Controls Sheet */}
+              <Sheet open={windPanelOpen} onOpenChange={setWindPanelOpen}>
+                <SheetTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    style={{ 
+                      color: '#888', 
+                      background: 'rgba(0,0,0,0.7)',
+                      border: '1px solid rgba(255,255,255,0.1)'
+                    }}
+                  >
+                    <Wind className="h-4 w-4 mr-2" />
+                    Wind
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-[400px] bg-zinc-900 border-zinc-700">
+                  <SheetHeader>
+                    <SheetTitle className="text-white">Wind Controls</SheetTitle>
+                  </SheetHeader>
+                  <div className="mt-6">
+                    <WindControls />
+                  </div>
+                </SheetContent>
+              </Sheet>
+
+              {/* Control Panel Sheet */}
+              <Sheet open={controlPanelOpen} onOpenChange={setControlPanelOpen}>
+                <SheetTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    style={{ 
+                      color: '#888', 
+                      background: 'rgba(0,0,0,0.7)',
+                      border: '1px solid rgba(255,255,255,0.1)'
+                    }}
+                  >
+                    <Gamepad2 className="h-4 w-4 mr-2" />
+                    Controls
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-[400px] bg-zinc-900 border-zinc-700">
+                  <SheetHeader>
+                    <SheetTitle className="text-white">Drone Control Panel</SheetTitle>
+                  </SheetHeader>
+                  <div className="mt-6">
+                    <ControlPanel />
+                  </div>
+                </SheetContent>
+              </Sheet>
             </div>
           </div>
         </div>
