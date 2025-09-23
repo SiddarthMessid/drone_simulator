@@ -13,6 +13,7 @@ import { useAudio } from "../lib/stores/useAudio";
 import { PIDController } from "../lib/pidController";
 import { DronePhysics } from "../lib/dronePhysics";
 import { drone } from "../lib/droneController";
+import { gamepadController } from "../lib/gamepadController";
 
 export default function DroneSimulation() {
   const droneRef = useRef<THREE.Group>(null);
@@ -48,11 +49,17 @@ export default function DroneSimulation() {
     // Update PID controller parameters
     pidController.current.updateParams(pidParams);
 
-    // Get current control inputs
+    // Get current control inputs from keyboard
     const controls = getControls();
     
-    // Map manual controls to setpoints (used when not in autopilot)
-    const manualSetpoints = {
+    // Get gamepad control inputs
+    const gamepadInputs = gamepadController.getControlInputs();
+    
+    // Combine keyboard and gamepad inputs (gamepad takes priority if active)
+    const hasGamepadInput = Math.abs(gamepadInputs.pitch) > 0 || Math.abs(gamepadInputs.roll) > 0 || 
+                           Math.abs(gamepadInputs.yaw) > 0 || Math.abs(gamepadInputs.throttle) > 0;
+    
+    const manualSetpoints = hasGamepadInput ? gamepadInputs : {
       pitch: controls.forward ? -0.3 : controls.backward ? 0.3 : 0,
       roll: controls.left ? -0.3 : controls.right ? 0.3 : 0,
       yaw: controls.yawLeft ? -1 : controls.yawRight ? 1 : 0,
@@ -65,7 +72,8 @@ export default function DroneSimulation() {
     // Log active controls for debugging
     if (Object.values(setpoints).some(v => v !== 0)) {
       const mode = drone.isAutopilotActive() ? "autopilot" : "manual";
-      console.log(`Controls active (${mode}):`, setpoints);
+      const inputSource = hasGamepadInput ? "gamepad" : "keyboard";
+      console.log(`Controls active (${mode} - ${inputSource}):`, setpoints);
     }
 
     // Calculate PID outputs
