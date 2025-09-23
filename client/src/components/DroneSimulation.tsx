@@ -12,6 +12,7 @@ import { useEnvironment } from "../lib/stores/useEnvironment";
 import { useAudio } from "../lib/stores/useAudio";
 import { PIDController } from "../lib/pidController";
 import { DronePhysics } from "../lib/dronePhysics";
+import { drone } from "../lib/droneController";
 
 export default function DroneSimulation() {
   const droneRef = useRef<THREE.Group>(null);
@@ -45,17 +46,21 @@ export default function DroneSimulation() {
     // Get current control inputs
     const controls = getControls();
     
-    // Map controls to desired setpoints
-    const setpoints = {
+    // Map manual controls to setpoints (used when not in autopilot)
+    const manualSetpoints = {
       pitch: controls.forward ? -0.3 : controls.backward ? 0.3 : 0,
       roll: controls.left ? -0.3 : controls.right ? 0.3 : 0,
       yaw: controls.yawLeft ? -1 : controls.yawRight ? 1 : 0,
       throttle: controls.throttleUp ? 1 : controls.throttleDown ? -0.5 : 0
     };
 
-    // Log controls for debugging
+    // Get setpoints from drone controller (handles both manual and autopilot modes)
+    const setpoints = drone.update(manualSetpoints, delta);
+
+    // Log active controls for debugging
     if (Object.values(setpoints).some(v => v !== 0)) {
-      console.log("Controls active:", setpoints);
+      const mode = drone.isAutopilotActive() ? "autopilot" : "manual";
+      console.log(`Controls active (${mode}):`, setpoints);
     }
 
     // Calculate PID outputs
