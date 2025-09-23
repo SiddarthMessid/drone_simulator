@@ -6,6 +6,7 @@ export default function Environment() {
   const { environmentSize, getAllObstacles } = useEnvironment();
   const allObstacles = getAllObstacles();
   const grassTexture = useTexture("/textures/grass.png");
+  const skyTexture = useTexture("/textures/sky.png");
   
   // Configure texture repeat
   grassTexture.wrapS = grassTexture.wrapT = THREE.RepeatWrapping;
@@ -70,8 +71,14 @@ export default function Environment() {
         </mesh>
       ))}
 
-      {/* Sky box simulation with fog */}
-      <fog attach="fog" args={['#87ceeb', 50, 200]} />
+      {/* Skybox using sky.png texture */}
+      <mesh>
+        <sphereGeometry args={[500, 32, 32]} />
+        <meshBasicMaterial 
+          map={skyTexture} 
+          side={THREE.BackSide}
+        />
+      </mesh>
     </>
   );
 }
