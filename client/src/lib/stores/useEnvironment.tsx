@@ -30,11 +30,15 @@ const DEFAULT_OBSTACLES: Obstacle[] = [
 interface EnvironmentStore {
   obstacles: Obstacle[];
   environmentSize: EnvironmentSize;
+  groundTexture?: string;
+  skyColor?: string;
   
   addObstacle: (obstacle: Omit<Obstacle, 'id'>) => void;
   removeObstacle: (id: string) => void;
   updateObstacle: (id: string, updates: Partial<Obstacle>) => void;
   setEnvironmentSize: (size: EnvironmentSize) => void;
+  setGroundTexture: (texture?: string) => void;
+  setSkyColor: (color?: string) => void;
   getAllObstacles: () => Obstacle[];
   getObstacleAABBs: () => AABB[];
 }
@@ -42,6 +46,8 @@ interface EnvironmentStore {
 export const useEnvironment = create<EnvironmentStore>((set, get) => ({
   obstacles: [],
   environmentSize: { width: 200, height: 200 },
+  groundTexture: undefined,
+  skyColor: undefined,
 
   addObstacle: (obstacle: Omit<Obstacle, 'id'>) => {
     const id = `obstacle_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -65,6 +71,14 @@ export const useEnvironment = create<EnvironmentStore>((set, get) => ({
 
   setEnvironmentSize: (size: EnvironmentSize) => {
     set({ environmentSize: size });
+  },
+
+  setGroundTexture: (texture?: string) => {
+    set({ groundTexture: texture });
+  },
+
+  setSkyColor: (color?: string) => {
+    set({ skyColor: color });
   },
 
   getAllObstacles: () => {

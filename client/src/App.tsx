@@ -7,12 +7,13 @@ import CodeEditor from "./components/CodeEditor";
 import ControlPanel from "./components/ControlPanel";
 import WindControls from "./components/WindControls";
 import EnvironmentEditor from "./components/EnvironmentEditor";
+import SceneGenerator from "./components/SceneGenerator";
 import RetractableWindControls from "./components/RetractableWindControls";
 import ErrorBoundary from "./components/ErrorBoundary";
 import WebGLFallback from "./components/WebGLFallback";
 import CameraControls from "./components/CameraControls";
 import { Button } from "./components/ui/button";
-import { Settings, Wind, BarChart3, Code, ChevronLeft, ChevronRight, Terminal, ChevronUp } from "lucide-react";
+import { Settings, Wind, BarChart3, Code, ChevronLeft, ChevronRight, Terminal, ChevronUp, Sparkles } from "lucide-react";
 import DraggableWindow from "./components/DraggableWindow";
 import Console from "./components/Console";
 import "@fontsource/inter";
@@ -110,6 +111,7 @@ function App() {
   const [environmentPanelOpen, setEnvironmentPanelOpen] = useState(false);
   const [windPanelOpen, setWindPanelOpen] = useState(false);
   const [controlPanelOpen, setControlPanelOpen] = useState(false);
+  const [sceneGeneratorOpen, setSceneGeneratorOpen] = useState(false);
 
   // Check WebGL availability early
   if (!isWebGLAvailable()) {
@@ -235,6 +237,20 @@ function App() {
               <Button
                 variant="ghost"
                 size="sm"
+                onClick={() => setSceneGeneratorOpen(true)}
+                style={{ 
+                  color: '#888', 
+                  background: 'rgba(0,0,0,0.7)',
+                  border: '1px solid rgba(255,255,255,0.1)'
+                }}
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                Generate Scene
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => setEnvironmentPanelOpen(true)}
                 style={{ 
                   color: '#888', 
@@ -341,6 +357,17 @@ function App() {
         </div>
           
           {/* Draggable Windows */}
+          <DraggableWindow
+            title="Scene Generator"
+            isOpen={sceneGeneratorOpen}
+            onClose={() => setSceneGeneratorOpen(false)}
+            initialPosition={{ x: typeof window !== 'undefined' ? window.innerWidth - 420 : 800, y: 50 }}
+            width={400}
+            height={650}
+          >
+            <SceneGenerator />
+          </DraggableWindow>
+
           <DraggableWindow
             title="Environment Editor"
             isOpen={environmentPanelOpen}

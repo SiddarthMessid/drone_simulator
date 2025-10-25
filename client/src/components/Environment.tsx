@@ -3,21 +3,24 @@ import * as THREE from "three";
 import { useEnvironment } from "../lib/stores/useEnvironment";
 
 export default function Environment() {
-  const { environmentSize, getAllObstacles } = useEnvironment();
+  const { environmentSize, getAllObstacles, groundTexture: storeGroundTexture, skyColor } = useEnvironment();
   const allObstacles = getAllObstacles();
-  const grassTexture = useTexture("/textures/grass.png");
+  
+  const textureToLoad = storeGroundTexture || "/textures/grass.png";
+  const groundTexture = useTexture(textureToLoad);
+  
   const skyTexture = useTexture("/textures/sky.png");
   
   // Configure texture repeat
-  grassTexture.wrapS = grassTexture.wrapT = THREE.RepeatWrapping;
-  grassTexture.repeat.set(20, 20);
+  groundTexture.wrapS = groundTexture.wrapT = THREE.RepeatWrapping;
+  groundTexture.repeat.set(20, 20);
 
   return (
     <>
       {/* Ground Plane */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.5, 0]} receiveShadow>
         <planeGeometry args={[environmentSize.width, environmentSize.height]} />
-        <meshLambertMaterial map={grassTexture} />
+        <meshLambertMaterial map={groundTexture} />
       </mesh>
 
       {/* Boundary Markers */}
@@ -71,13 +74,20 @@ export default function Environment() {
         </mesh>
       ))}
 
-      {/* Skybox using sky.png texture */}
+      {/* Skybox - use color if specified, otherwise texture */}
       <mesh>
         <sphereGeometry args={[500, 32, 32]} />
-        <meshBasicMaterial 
-          map={skyTexture} 
-          side={THREE.BackSide}
-        />
+        {skyColor ? (
+          <meshBasicMaterial 
+            color={skyColor} 
+            side={THREE.BackSide}
+          />
+        ) : (
+          <meshBasicMaterial 
+            map={skyTexture} 
+            side={THREE.BackSide}
+          />
+        )}
       </mesh>
     </>
   );
