@@ -89,6 +89,7 @@ This is a real-time 3D drone flight simulation application that allows users to 
 - **Connection**: Serverless-compatible database driver
 
 ## Changelog
+- October 25, 2025. Added procedural scene generation system with 6 scene templates (park, disaster, building interior, urban, forest, warehouse)
 - June 23, 2025. Initial setup
 
 ## User Preferences
