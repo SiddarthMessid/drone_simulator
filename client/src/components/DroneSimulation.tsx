@@ -1,5 +1,5 @@
 import { useFrame } from "@react-three/fiber";
-import { useKeyboardControls } from "@react-three/drei";
+import { useKeyboardControls, OrbitControls } from "@react-three/drei";
 import { useRef } from "react";
 import * as THREE from "three";
 import { Controls } from "../App";
@@ -10,6 +10,7 @@ import { useDrone } from "../lib/stores/useDrone";
 import { useWind } from "../lib/stores/useWind";
 import { useEnvironment } from "../lib/stores/useEnvironment";
 import { useAudio } from "../lib/stores/useAudio";
+import { useCamera } from "../lib/stores/useCamera";
 import { PIDController } from "../lib/pidController";
 import { DronePhysics } from "../lib/dronePhysics";
 import { drone } from "../lib/droneController";
@@ -17,7 +18,6 @@ import { gamepadController } from "../lib/gamepadController";
 
 export default function DroneSimulation() {
   const droneRef = useRef<THREE.Group>(null);
-  const cameraRef = useRef<THREE.Camera>(null);
   const [, getControls] = useKeyboardControls<Controls>();
   
   // Make drone controller and THREE globally accessible for user scripts
@@ -39,6 +39,7 @@ export default function DroneSimulation() {
   const { getWindAtPosition, windSources } = useWind();
   const { getObstacleAABBs } = useEnvironment();
   const { playHit } = useAudio();
+  const { mode: cameraMode, followOffset, fpvOffset, fpvHeight } = useCamera();
   
   // Initialize PID controllers and physics
   const pidController = useRef(new PIDController(pidParams));
@@ -127,20 +128,69 @@ export default function DroneSimulation() {
       throttle: setpoints.throttle
     });
 
-    // Update camera to follow drone
+    // Update camera based on mode
     const camera = state.camera;
-    const idealPosition = new THREE.Vector3(
-      newState.position.x - 15,
-      newState.position.y + 8,
-      newState.position.z + 15
-    );
     
-    camera.position.lerp(idealPosition, 0.05);
-    camera.lookAt(newState.position);
+    if (cameraMode === 'follow') {
+      // Follow camera: using customizable offset
+      const idealPosition = new THREE.Vector3(
+        newState.position.x + followOffset.x,
+        newState.position.y + followOffset.y,
+        newState.position.z + followOffset.z
+      );
+      
+      camera.position.lerp(idealPosition, 0.05);
+      camera.lookAt(newState.position);
+    } else if (cameraMode === 'fpv') {
+      // FPV camera: on top of the drone, looking forward like F1
+      // Calculate drone's orientation vectors
+      const droneForward = new THREE.Vector3(0, 0, -1);
+      droneForward.applyEuler(new THREE.Euler(newState.rotation.x, newState.rotation.y, newState.rotation.z));
+      
+      const droneUp = new THREE.Vector3(0, 1, 0);
+      droneUp.applyEuler(new THREE.Euler(newState.rotation.x, newState.rotation.y, newState.rotation.z));
+      
+      const droneRight = new THREE.Vector3(1, 0, 0);
+      droneRight.applyEuler(new THREE.Euler(newState.rotation.x, newState.rotation.y, newState.rotation.z));
+      
+      // Camera position: on top of drone using full up vector + customizable offsets
+      const fpvPosition = new THREE.Vector3(
+        newState.position.x + droneUp.x * fpvHeight + droneForward.x * fpvOffset.z + droneRight.x * fpvOffset.x + droneUp.x * fpvOffset.y,
+        newState.position.y + droneUp.y * fpvHeight + droneForward.y * fpvOffset.z + droneRight.y * fpvOffset.x + droneUp.y * fpvOffset.y,
+        newState.position.z + droneUp.z * fpvHeight + droneForward.z * fpvOffset.z + droneRight.z * fpvOffset.x + droneUp.z * fpvOffset.y
+      );
+      
+      // Look target: forward in the direction the drone is facing
+      const lookTarget = new THREE.Vector3(
+        fpvPosition.x + droneForward.x * 10,
+        fpvPosition.y + droneForward.y * 10,
+        fpvPosition.z + droneForward.z * 10
+      );
+      
+      camera.position.copy(fpvPosition);
+      camera.lookAt(lookTarget);
+    }
   });
 
   return (
     <>
+      {/* Manual Camera Controls - Only active in manual mode */}
+      {cameraMode === 'manual' && (
+        <OrbitControls
+          enablePan={false}
+          enableRotate={true}
+          enableZoom={true}
+          mouseButtons={{
+            LEFT: undefined,
+            MIDDLE: undefined,
+            RIGHT: THREE.MOUSE.ROTATE,
+          }}
+          target={[position.x, position.y, position.z]}
+          minDistance={5}
+          maxDistance={100}
+        />
+      )}
+
       {/* Lighting */}
       <ambientLight intensity={0.4} />
       <directionalLight

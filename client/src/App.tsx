@@ -10,6 +10,7 @@ import EnvironmentEditor from "./components/EnvironmentEditor";
 import RetractableWindControls from "./components/RetractableWindControls";
 import ErrorBoundary from "./components/ErrorBoundary";
 import WebGLFallback from "./components/WebGLFallback";
+import CameraControls from "./components/CameraControls";
 import { Button } from "./components/ui/button";
 import { Settings, Wind, BarChart3, Code, ChevronLeft, ChevronRight, Terminal, ChevronUp } from "lucide-react";
 import DraggableWindow from "./components/DraggableWindow";
@@ -298,6 +299,9 @@ function App() {
                 </Button>
               </div>
             )}
+
+            {/* Camera Controls */}
+            <CameraControls />
           </div>
         </div>
           
