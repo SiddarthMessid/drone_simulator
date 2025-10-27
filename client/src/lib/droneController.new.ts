@@ -139,6 +139,16 @@ export class DroneController {
     this.isAutopilot = true;
   }
 
+  setHoverMode(enabled: boolean): void {
+    if (enabled) {
+      // Set default hover throttle to keep drone in the air
+      this.manualSetpoints.throttle = 0.5;
+      this.isAutopilot = false;
+    } else {
+      this.manualSetpoints.throttle = 0;
+    }
+  }
+
   updateLeaderPosition(position: THREE.Vector3, rotation: THREE.Vector3): void {
     if (!this.isLeader && this.formationTarget) {
       this.leaderPosition = position.clone();

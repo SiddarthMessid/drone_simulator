@@ -71,6 +71,9 @@ export const useMultiDrone = create<{
       Math.floor(state.drones.size / 3) * 3 // Z position
     );
 
+    // Set default hover mode for fleet drones
+    controller.setHoverMode(true);
+
     state.drones.set(id, controller);
     state.dronePositions.set(id, position);
     state.droneColors.set(id, DEFAULT_COLORS[state.drones.size - 1]);
