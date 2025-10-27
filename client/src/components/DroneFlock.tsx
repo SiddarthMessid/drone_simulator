@@ -27,16 +27,49 @@ export default function DroneFlock() {
   const { mode: cameraMode, followOffset } = useCamera();
 
   // Initialize physics and controllers for each drone
+  // Use array of drone IDs as dependency to detect when drones are added/removed
+  const droneIds = Array.from(drones.keys());
+  
   useEffect(() => {
     drones.forEach((droneController, id) => {
       if (!pidControllers.current.has(id)) {
+        console.log(`Initializing PID controller for drone ${id}`);
         pidControllers.current.set(id, new PIDController(droneController.getPIDParams()));
       }
       if (!dronePhysics.current.has(id)) {
+        console.log(`Initializing physics for drone ${id}`);
         dronePhysics.current.set(id, new DronePhysics());
+        
+        // Initialize drone state with its stored position
+        const initialPos = dronePositions.get(id);
+        if (initialPos) {
+          const initialState = {
+            position: initialPos.clone(),
+            rotation: new THREE.Vector3(0, 0, 0),
+            velocity: new THREE.Vector3(0, 0, 0),
+            angularVelocity: new THREE.Vector3(0, 0, 0)
+          };
+          droneController.updateState(initialState);
+          console.log(`Initialized drone ${id} at position:`, initialPos);
+        }
       }
     });
-  }, [drones]);
+    
+    // Clean up removed drones
+    pidControllers.current.forEach((_, id) => {
+      if (!drones.has(id)) {
+        console.log(`Removing PID controller for drone ${id}`);
+        pidControllers.current.delete(id);
+      }
+    });
+    
+    dronePhysics.current.forEach((_, id) => {
+      if (!drones.has(id)) {
+        console.log(`Removing physics for drone ${id}`);
+        dronePhysics.current.delete(id);
+      }
+    });
+  }, [droneIds.length, droneIds.join(','), drones, dronePositions]);
 
   useFrame((state, delta) => {
     const obstacleAABBs = getObstacleAABBs();
