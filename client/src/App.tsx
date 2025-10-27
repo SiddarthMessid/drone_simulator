@@ -198,7 +198,6 @@ function App() {
                 <Suspense fallback={null}>
                   <DroneSimulation />
                   <ImportedModels />
-                  <CameraControls />
                 </Suspense>
               </Canvas>
               <ModelUploader />
