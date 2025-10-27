@@ -1,0 +1,120 @@
+import { useRef, useEffect } from "react";
+import * as THREE from "three";
+import { useFrame } from "@react-three/fiber";
+import { useMultiDrone } from "../lib/stores/useMultiDrone";
+import DroneModel from "./DroneModel";
+import { PIDController } from "../lib/pidController";
+import { DronePhysics } from "../lib/dronePhysics";
+import { useWind } from "../lib/stores/useWind";
+import { useEnvironment } from "../lib/stores/useEnvironment";
+import { useAudio } from "../lib/stores/useAudio";
+import { useCamera } from "../lib/stores/useCamera";
+
+export default function DroneFlock() {
+  const {
+    state: { enabled, drones, dronePositions, droneColors },
+    updateDronePosition,
+    updateFormationPositions,
+  } = useMultiDrone();
+
+  const droneRefs = useRef<Map<string, THREE.Group>>(new Map());
+  const pidControllers = useRef<Map<string, PIDController>>(new Map());
+  const dronePhysics = useRef<Map<string, DronePhysics>>(new Map());
+
+  const { getWindAtPosition } = useWind();
+  const { getObstacleAABBs } = useEnvironment();
+  const { playHit } = useAudio();
+  const { mode: cameraMode, followOffset } = useCamera();
+
+  // Initialize physics and controllers for each drone
+  useEffect(() => {
+    drones.forEach((droneController, id) => {
+      if (!pidControllers.current.has(id)) {
+        pidControllers.current.set(id, new PIDController(droneController.getPIDParams()));
+      }
+      if (!dronePhysics.current.has(id)) {
+        dronePhysics.current.set(id, new DronePhysics());
+      }
+    });
+  }, [drones]);
+
+  useFrame((state, delta) => {
+    const obstacleAABBs = getObstacleAABBs();
+    
+    // Update formation positions for leader-follower behavior
+    updateFormationPositions();
+
+    // Update each drone's physics
+    drones.forEach((droneController, id) => {
+      const droneRef = droneRefs.current.get(id);
+      if (!droneRef) return;
+
+      const pidController = pidControllers.current.get(id);
+      const physics = dronePhysics.current.get(id);
+      if (!pidController || !physics) return;
+
+      const droneState = droneController.getState();
+      const setpoints = droneController.getSetpoints();
+      
+      // Convert DroneState to PIDState
+      const pidState = {
+        pitch: droneState.rotation.x,
+        roll: droneState.rotation.z,
+        yaw: droneState.rotation.y,
+        altitude: droneState.position.y
+      };
+      
+      const pidOutputs = pidController.update(pidState, setpoints, delta);
+
+      // Get wind forces at current drone position
+      const windAtPosition = getWindAtPosition(
+        droneState.position,
+        state.clock.elapsedTime
+      );
+      const wind = new THREE.Vector3(windAtPosition.x, windAtPosition.y, windAtPosition.z);
+
+      // Update physics with collision detection
+      const { newState, collision } = physics.update(
+        droneState,
+        pidOutputs,
+        wind,
+        delta,
+        obstacleAABBs
+      );
+
+      // Play hit sound on collision
+      if (collision.collided) {
+        playHit();
+      }
+
+      // Update drone controller state
+      droneController.updateState(newState);
+
+      // Update drone model position and rotation
+      droneRef.position.copy(newState.position);
+      droneRef.rotation.set(newState.rotation.x, newState.rotation.y, newState.rotation.z);
+
+      // Update stored position for formation/swarm calculations
+      updateDronePosition(id, newState.position);
+    });
+  });
+
+  return enabled ? (
+    <>
+      {Array.from(drones.keys()).map((id) => {
+        const position = dronePositions.get(id);
+        if (!position) return null;
+        
+        return (
+          <group
+            key={id}
+            ref={(el) => el && droneRefs.current.set(id, el)}
+            position={[position.x, position.y, position.z]}
+          >
+            <DroneModel color={droneColors.get(id) || "#2a2a2a"} />
+          </group>
+        );
+      })}
+    </>
+  ) : null;
+}
