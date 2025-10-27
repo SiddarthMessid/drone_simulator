@@ -122,12 +122,29 @@ export class SceneGenerator {
       if (position) {
         const size = this.generateSize(template, settings.sizeVariation);
         
-        obstacles.push({
+        const modelId = template.modelVariants 
+          ? template.modelVariants[Math.floor(this.random.next() * template.modelVariants.length)]
+          : template.modelId;
+
+        const obstacle: Omit<Obstacle, 'id'> = {
           name: `${template.type} ${i + 1}`,
           position,
           size,
-          color: this.varyColor(template.color, settings.sizeVariation * 0.3)
-        });
+          ...(modelId ? { modelId } : { color: this.varyColor(template.color!, settings.sizeVariation * 0.3) })
+        };
+
+        // Add model-specific transforms if using a model
+        if (modelId && (template.modelScale || template.modelRotation)) {
+          obstacle.rotation = template.modelRotation 
+            ? {
+                x: template.modelRotation.x + (this.random.next() - 0.5) * 0.2,
+                y: template.modelRotation.y + this.random.next() * Math.PI * 2, // Random rotation around Y
+                z: template.modelRotation.z + (this.random.next() - 0.5) * 0.2
+              }
+            : { x: 0, y: this.random.next() * Math.PI * 2, z: 0 };
+        }
+
+        obstacles.push(obstacle);
 
         if (!placementRules.allowOverlap) {
           this.placedPositions.push(position);

@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useCamera, CameraMode } from '../lib/stores/useCamera';
 import { Button } from './ui/button';
 import { Slider } from './ui/slider';
@@ -14,6 +15,24 @@ export default function CameraControls() {
     setFpvOffset,
     setFpvHeight
   } = useCamera();
+
+  // Track current slider values
+  const [currentFollowOffset, setCurrentFollowOffset] = useState(followOffset);
+  const [currentFpvOffset, setCurrentFpvOffset] = useState(fpvOffset);
+  const [currentFpvHeight, setCurrentFpvHeight] = useState(fpvHeight);
+
+  // Keep current values in sync with stored values
+  useEffect(() => {
+    setCurrentFollowOffset(followOffset);
+  }, [followOffset]);
+
+  useEffect(() => {
+    setCurrentFpvOffset(fpvOffset);
+  }, [fpvOffset]);
+
+  useEffect(() => {
+    setCurrentFpvHeight(fpvHeight);
+  }, [fpvHeight]);
 
   const modes: { value: CameraMode; label: string; icon: typeof Camera }[] = [
     { value: 'follow', label: 'Follow', icon: Camera },
@@ -77,11 +96,13 @@ export default function CameraControls() {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#aaa', marginBottom: '6px' }}>
               <span>X Offset (Left/Right)</span>
-              <span style={{ color: '#3b82f6', fontWeight: 'bold' }}>{followOffset.x.toFixed(1)}</span>
+              <span style={{ color: '#3b82f6', fontWeight: 'bold' }}>{currentFollowOffset.x.toFixed(1)}</span>
             </div>
             <Slider
-              value={[followOffset.x]}
-              onValueChange={(values) => setFollowOffset({ ...followOffset, x: values[0] })}
+              defaultValue={[followOffset.x]}
+              value={[currentFollowOffset.x]}
+              onValueChange={(values) => setCurrentFollowOffset({ ...currentFollowOffset, x: values[0] })}
+              onValueCommit={(values) => setFollowOffset({ ...followOffset, x: values[0] })}
               min={-30}
               max={30}
               step={0.5}
@@ -92,11 +113,13 @@ export default function CameraControls() {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#aaa', marginBottom: '6px' }}>
               <span>Y Offset (Height)</span>
-              <span style={{ color: '#3b82f6', fontWeight: 'bold' }}>{followOffset.y.toFixed(1)}</span>
+              <span style={{ color: '#3b82f6', fontWeight: 'bold' }}>{currentFollowOffset.y.toFixed(1)}</span>
             </div>
             <Slider
-              value={[followOffset.y]}
-              onValueChange={(values) => setFollowOffset({ ...followOffset, y: values[0] })}
+              defaultValue={[followOffset.y]}
+              value={[currentFollowOffset.y]}
+              onValueChange={(values) => setCurrentFollowOffset({ ...currentFollowOffset, y: values[0] })}
+              onValueCommit={(values) => setFollowOffset({ ...followOffset, y: values[0] })}
               min={0}
               max={30}
               step={0.5}
@@ -107,11 +130,13 @@ export default function CameraControls() {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#aaa', marginBottom: '6px' }}>
               <span>Z Offset (Distance)</span>
-              <span style={{ color: '#3b82f6', fontWeight: 'bold' }}>{followOffset.z.toFixed(1)}</span>
+              <span style={{ color: '#3b82f6', fontWeight: 'bold' }}>{currentFollowOffset.z.toFixed(1)}</span>
             </div>
             <Slider
-              value={[followOffset.z]}
-              onValueChange={(values) => setFollowOffset({ ...followOffset, z: values[0] })}
+              defaultValue={[followOffset.z]}
+              value={[currentFollowOffset.z]}
+              onValueChange={(values) => setCurrentFollowOffset({ ...currentFollowOffset, z: values[0] })}
+              onValueCommit={(values) => setFollowOffset({ ...followOffset, z: values[0] })}
               min={-30}
               max={30}
               step={0.5}
@@ -121,12 +146,16 @@ export default function CameraControls() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setFollowOffset({ x: -15, y: 8, z: 15 })}
+            onClick={() => {
+              const defaultValues = { x: -15, y: 8, z: 15 };
+              setFollowOffset(defaultValues);
+              setCurrentFollowOffset(defaultValues);
+            }}
             style={{
               fontSize: '10px',
               background: 'rgba(0, 0, 0, 0.5)',
               color: '#888',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
+              border: '1px solid rgba(255,255,255,0.1)',
             }}
           >
             Reset to Default
@@ -155,8 +184,10 @@ export default function CameraControls() {
               <span style={{ color: '#3b82f6', fontWeight: 'bold' }}>{fpvHeight.toFixed(2)}</span>
             </div>
             <Slider
-              value={[fpvHeight]}
-              onValueChange={(values) => setFpvHeight(values[0])}
+              defaultValue={[fpvHeight]}
+              value={[currentFpvHeight]}
+              onValueChange={(values) => setCurrentFpvHeight(values[0])}
+              onValueCommit={(values) => setFpvHeight(values[0])}
               min={0}
               max={5}
               step={0.1}
@@ -167,11 +198,13 @@ export default function CameraControls() {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#aaa', marginBottom: '6px' }}>
               <span>X Offset (Sideways)</span>
-              <span style={{ color: '#3b82f6', fontWeight: 'bold' }}>{fpvOffset.x.toFixed(2)}</span>
+              <span style={{ color: '#3b82f6', fontWeight: 'bold' }}>{currentFpvOffset.x.toFixed(2)}</span>
             </div>
             <Slider
-              value={[fpvOffset.x]}
-              onValueChange={(values) => setFpvOffset({ ...fpvOffset, x: values[0] })}
+              defaultValue={[fpvOffset.x]}
+              value={[currentFpvOffset.x]}
+              onValueChange={(values) => setCurrentFpvOffset({ ...currentFpvOffset, x: values[0] })}
+              onValueCommit={(values) => setFpvOffset({ ...fpvOffset, x: values[0] })}
               min={-3}
               max={3}
               step={0.1}
@@ -182,11 +215,13 @@ export default function CameraControls() {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#aaa', marginBottom: '6px' }}>
               <span>Y Offset (Vertical)</span>
-              <span style={{ color: '#3b82f6', fontWeight: 'bold' }}>{fpvOffset.y.toFixed(2)}</span>
+              <span style={{ color: '#3b82f6', fontWeight: 'bold' }}>{currentFpvOffset.y.toFixed(2)}</span>
             </div>
             <Slider
-              value={[fpvOffset.y]}
-              onValueChange={(values) => setFpvOffset({ ...fpvOffset, y: values[0] })}
+              defaultValue={[fpvOffset.y]}
+              value={[currentFpvOffset.y]}
+              onValueChange={(values) => setCurrentFpvOffset({ ...currentFpvOffset, y: values[0] })}
+              onValueCommit={(values) => setFpvOffset({ ...fpvOffset, y: values[0] })}
               min={-3}
               max={3}
               step={0.1}
@@ -197,11 +232,13 @@ export default function CameraControls() {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#aaa', marginBottom: '6px' }}>
               <span>Z Offset (Forward/Back)</span>
-              <span style={{ color: '#3b82f6', fontWeight: 'bold' }}>{fpvOffset.z.toFixed(2)}</span>
+              <span style={{ color: '#3b82f6', fontWeight: 'bold' }}>{currentFpvOffset.z.toFixed(2)}</span>
             </div>
             <Slider
-              value={[fpvOffset.z]}
-              onValueChange={(values) => setFpvOffset({ ...fpvOffset, z: values[0] })}
+              defaultValue={[fpvOffset.z]}
+              value={[currentFpvOffset.z]}
+              onValueChange={(values) => setCurrentFpvOffset({ ...currentFpvOffset, z: values[0] })}
+              onValueCommit={(values) => setFpvOffset({ ...fpvOffset, z: values[0] })}
               min={-3}
               max={3}
               step={0.1}
@@ -212,8 +249,12 @@ export default function CameraControls() {
             variant="outline"
             size="sm"
             onClick={() => {
-              setFpvHeight(1.2);
-              setFpvOffset({ x: 0, y: 0, z: 0.3 });
+              const defaultHeight = 1.2;
+              const defaultOffset = { x: 0, y: 0, z: 0.3 };
+              setFpvHeight(defaultHeight);
+              setCurrentFpvHeight(defaultHeight);
+              setFpvOffset(defaultOffset);
+              setCurrentFpvOffset(defaultOffset);
             }}
             style={{
               fontSize: '10px',

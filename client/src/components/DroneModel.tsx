@@ -11,12 +11,16 @@ export default function DroneModel() {
   // Create rotor rotation based on throttle
   useFrame((state, delta) => {
     if (rotorRefs.current) {
-      const rotorSpeed = (telemetry.throttle + 0.5) * 50; // Base rotation speed
+      // Ensure minimum rotor speed and smooth acceleration/deceleration
+      const minRotorSpeed = 15; // Minimum rotation speed
+      const maxRotorSpeed = 60; // Maximum rotation speed
+      const targetSpeed = minRotorSpeed + (Math.abs(telemetry.throttle) + 0.5) * (maxRotorSpeed - minRotorSpeed);
+      
       rotorRefs.current.forEach((rotor, index) => {
         if (rotor) {
           // Alternate rotation direction for realistic physics
           const direction = index % 2 === 0 ? 1 : -1;
-          rotor.rotation.y += direction * rotorSpeed * delta;
+          rotor.rotation.y += direction * targetSpeed * delta;
         }
       });
     }
@@ -43,10 +47,10 @@ export default function DroneModel() {
 
       {/* Arms */}
       {[
-        { pos: [1.2, 0, 0], rot: [0, 0, 0] },      // Right arm
-        { pos: [-1.2, 0, 0], rot: [0, 0, 0] },     // Left arm  
-        { pos: [0, 0, 1.2], rot: [0, Math.PI/2, 0] }, // Front arm
-        { pos: [0, 0, -1.2], rot: [0, Math.PI/2, 0] } // Back arm
+        { pos: new THREE.Vector3(1.2, 0, 0), rot: new THREE.Euler(0, 0, 0) },      // Right arm
+        { pos: new THREE.Vector3(-1.2, 0, 0), rot: new THREE.Euler(0, 0, 0) },     // Left arm  
+        { pos: new THREE.Vector3(0, 0, 1.2), rot: new THREE.Euler(0, Math.PI/2, 0) }, // Front arm
+        { pos: new THREE.Vector3(0, 0, -1.2), rot: new THREE.Euler(0, Math.PI/2, 0) } // Back arm
       ].map((arm, index) => (
         <mesh 
           key={index}
@@ -61,10 +65,10 @@ export default function DroneModel() {
 
       {/* Motors and Rotors */}
       {[
-        [1.8, 0.15, 1.8],   // Front right
-        [-1.8, 0.15, 1.8],  // Front left
-        [-1.8, 0.15, -1.8], // Back left
-        [1.8, 0.15, -1.8]   // Back right
+        new THREE.Vector3(1.8, 0.15, 1.8),   // Front right
+        new THREE.Vector3(-1.8, 0.15, 1.8),  // Front left
+        new THREE.Vector3(-1.8, 0.15, -1.8), // Back left
+        new THREE.Vector3(1.8, 0.15, -1.8)   // Back right
       ].map((pos, index) => (
         <group key={index} position={pos}>
           {/* Motor */}
@@ -104,10 +108,10 @@ export default function DroneModel() {
 
       {/* Landing Gear */}
       {[
-        [0.8, -0.4, 0.8],
-        [-0.8, -0.4, 0.8],
-        [-0.8, -0.4, -0.8],
-        [0.8, -0.4, -0.8]
+        new THREE.Vector3(0.8, -0.4, 0.8),
+        new THREE.Vector3(-0.8, -0.4, 0.8),
+        new THREE.Vector3(-0.8, -0.4, -0.8),
+        new THREE.Vector3(0.8, -0.4, -0.8)
       ].map((pos, index) => (
         <mesh key={index} position={pos} castShadow>
           <cylinderGeometry args={[0.05, 0.05, 0.6, 8]} />

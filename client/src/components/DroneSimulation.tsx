@@ -63,8 +63,8 @@ export default function DroneSimulation() {
     
     const manualSetpoints = hasGamepadInput ? gamepadInputs : {
       pitch: controls.forward ? -0.3 : controls.backward ? 0.3 : 0,
-      roll: controls.left ? -0.3 : controls.right ? 0.3 : 0,
-      yaw: controls.yawLeft ? -1 : controls.yawRight ? 1 : 0,
+      roll: controls.left ? 0.3 : controls.right ? -0.3 : 0,  // Inverted roll for correct left/right
+      yaw: controls.yawLeft ? 1 : controls.yawRight ? -1 : 0, // Inverted yaw for correct rotation
       throttle: controls.throttleUp ? 1 : controls.throttleDown ? -0.5 : 0
     };
 
@@ -132,28 +132,37 @@ export default function DroneSimulation() {
     const camera = state.camera;
     
     if (cameraMode === 'follow') {
-      // Follow camera: using customizable offset
+      // Follow camera: using customizable offset with drone rotation
+      const offsetVector = new THREE.Vector3(followOffset.x, followOffset.y, followOffset.z);
+      offsetVector.applyAxisAngle(new THREE.Vector3(0, 1, 0), newState.rotation.y);
+      
       const idealPosition = new THREE.Vector3(
-        newState.position.x + followOffset.x,
-        newState.position.y + followOffset.y,
-        newState.position.z + followOffset.z
+        newState.position.x + offsetVector.x,
+        newState.position.y + followOffset.y, // Keep vertical offset independent
+        newState.position.z + offsetVector.z
       );
       
-      camera.position.lerp(idealPosition, 0.05);
+      // Smoother camera movement with dynamic lerp
+      const currentDistance = camera.position.distanceTo(idealPosition);
+      const lerpFactor = THREE.MathUtils.clamp(delta * (2 + currentDistance), 0.02, 0.15);
+      
+      camera.position.lerp(idealPosition, lerpFactor);
       camera.lookAt(newState.position);
     } else if (cameraMode === 'fpv') {
-      // FPV camera: on top of the drone, looking forward like F1
-      // Calculate drone's orientation vectors
+      // FPV camera: mounted on the drone, tilting with roll and pitch
+      const droneEuler = new THREE.Euler(newState.rotation.x, newState.rotation.y, newState.rotation.z, 'YXZ');
+      
+      // Calculate drone's orientation vectors with full rotation
       const droneForward = new THREE.Vector3(0, 0, -1);
-      droneForward.applyEuler(new THREE.Euler(newState.rotation.x, newState.rotation.y, newState.rotation.z));
+      droneForward.applyEuler(droneEuler);
       
       const droneUp = new THREE.Vector3(0, 1, 0);
-      droneUp.applyEuler(new THREE.Euler(newState.rotation.x, newState.rotation.y, newState.rotation.z));
+      droneUp.applyEuler(droneEuler);
       
       const droneRight = new THREE.Vector3(1, 0, 0);
-      droneRight.applyEuler(new THREE.Euler(newState.rotation.x, newState.rotation.y, newState.rotation.z));
+      droneRight.applyEuler(droneEuler);
       
-      // Camera position: on top of drone using full up vector + customizable offsets
+      // Camera position: mounted on the drone with offsets
       const fpvPosition = new THREE.Vector3(
         newState.position.x + droneUp.x * fpvHeight + droneForward.x * fpvOffset.z + droneRight.x * fpvOffset.x + droneUp.x * fpvOffset.y,
         newState.position.y + droneUp.y * fpvHeight + droneForward.y * fpvOffset.z + droneRight.y * fpvOffset.x + droneUp.y * fpvOffset.y,
@@ -167,8 +176,12 @@ export default function DroneSimulation() {
         fpvPosition.z + droneForward.z * 10
       );
       
+      // Set camera position and orientation
       camera.position.copy(fpvPosition);
       camera.lookAt(lookTarget);
+      
+      // Apply the same roll as the drone
+      camera.up.copy(droneUp);
     }
   });
 
@@ -177,17 +190,21 @@ export default function DroneSimulation() {
       {/* Manual Camera Controls - Only active in manual mode */}
       {cameraMode === 'manual' && (
         <OrbitControls
-          enablePan={false}
+          enablePan={true}
           enableRotate={true}
           enableZoom={true}
+          minPolarAngle={0}
+          maxPolarAngle={Math.PI * 0.75}
           mouseButtons={{
-            LEFT: undefined,
+            LEFT: THREE.MOUSE.PAN,
             MIDDLE: undefined,
             RIGHT: THREE.MOUSE.ROTATE,
           }}
           target={[position.x, position.y, position.z]}
-          minDistance={5}
-          maxDistance={100}
+          minDistance={2}
+          maxDistance={200}
+          enableDamping={true}
+          dampingFactor={0.05}
         />
       )}
 

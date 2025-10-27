@@ -207,8 +207,8 @@ export class GamepadController {
 
         const controlInputs = {
           pitch: -leftStickY * 0.4 * controlMultiplier,      // Forward/backward (inverted)
-          roll: leftStickX * 0.4 * controlMultiplier,        // Left/right
-          yaw: rightStickX * 1.0 * controlMultiplier,        // Rotation
+          roll: -leftStickX * 0.4 * controlMultiplier,       // Left/right (inverted to fix direction)
+          yaw: -rightStickX * 1.0 * controlMultiplier,       // Rotation (inverted to fix direction)
           throttle: -rightStickY * 1.0 * controlMultiplier   // Up/down (inverted)
         };
         

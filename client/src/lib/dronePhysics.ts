@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { AABB } from "./stores/useEnvironment";
+import { useEnvironment } from "./stores/useEnvironment";
 
 export interface DroneState {
   position: THREE.Vector3;
@@ -91,20 +92,40 @@ export class DronePhysics {
     // Apply final position
     newState.position.copy(proposedPosition);
 
-    // Ground collision
-    if (newState.position.y < 0.5) {
-      newState.position.y = 0.5;
-      newState.velocity.y = Math.max(0, newState.velocity.y);
+    // Terrain collision
+    const { terrain } = useEnvironment.getState();
+    if (terrain) {
+      const terrainHeight = useEnvironment.getState().getTerrainHeight(
+        newState.position.x,
+        newState.position.z
+      );
       
-      // Reduce velocity on ground contact
-      if (newState.position.y <= 0.5) {
+      const minClearance = 0.5; // Minimum height above terrain
+      if (newState.position.y < terrainHeight + minClearance) {
+        newState.position.y = terrainHeight + minClearance;
+        newState.velocity.y = Math.max(0, newState.velocity.y);
+        
+        // Reduce velocity on terrain contact
         newState.velocity.multiplyScalar(0.8);
         newState.angularVelocity.multiplyScalar(0.8);
+        
+        if (!collision.collided) {
+          collision.collided = true;
+          collision.axis = 'y';
+        }
       }
-      
-      if (!collision.collided) {
-        collision.collided = true;
-        collision.axis = 'y';
+    } else {
+      // Fallback to flat ground if no terrain data
+      if (newState.position.y < 0.5) {
+        newState.position.y = 0.5;
+        newState.velocity.y = Math.max(0, newState.velocity.y);
+        newState.velocity.multiplyScalar(0.8);
+        newState.angularVelocity.multiplyScalar(0.8);
+        
+        if (!collision.collided) {
+          collision.collided = true;
+          collision.axis = 'y';
+        }
       }
     }
 
@@ -124,8 +145,12 @@ export class DronePhysics {
     // Thrust (always upward in drone's local frame)
     const thrustMagnitude = (motorOutputs.throttle + 0.5) * this.mass * this.gravity * 1.2;
     
+    // Set minimum thrust to prevent sudden drops
+    const minThrust = this.mass * this.gravity * 0.2; // 20% minimum thrust
+    const smoothedThrust = Math.max(thrustMagnitude, minThrust);
+    
     // Transform thrust to world coordinates based on drone rotation
-    const thrustWorld = new THREE.Vector3(0, thrustMagnitude, 0);
+    const thrustWorld = new THREE.Vector3(0, smoothedThrust, 0);
     
     // Apply rotation to thrust vector
     const rotationMatrix = new THREE.Matrix4().makeRotationFromEuler(
@@ -239,4 +264,5 @@ export class DronePhysics {
     
     return combinedHalf - distance;
   }
+
 }

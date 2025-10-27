@@ -1,50 +1,13 @@
-import { useTexture } from "@react-three/drei";
-import * as THREE from "three";
+import ModularTerrainEnvironment from './ModularTerrainEnvironment';
 import { useEnvironment } from "../lib/stores/useEnvironment";
 
 export default function Environment() {
-  const { environmentSize, getAllObstacles, groundTexture: storeGroundTexture, skyColor } = useEnvironment();
+  const { getAllObstacles } = useEnvironment();
   const allObstacles = getAllObstacles();
-  
-  const textureToLoad = storeGroundTexture || "/textures/grass.png";
-  const groundTexture = useTexture(textureToLoad);
-  
-  const skyTexture = useTexture("/textures/sky.png");
-  
-  // Configure texture repeat
-  groundTexture.wrapS = groundTexture.wrapT = THREE.RepeatWrapping;
-  groundTexture.repeat.set(20, 20);
 
   return (
     <>
-      {/* Ground Plane */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.5, 0]} receiveShadow>
-        <planeGeometry args={[environmentSize.width, environmentSize.height]} />
-        <meshLambertMaterial map={groundTexture} />
-      </mesh>
-
-      {/* Boundary Markers */}
-      {Array.from({ length: 20 }, (_, i) => (
-        <group key={i}>
-          {/* Perimeter posts */}
-          <mesh position={[50, 2, (i - 10) * 10]} castShadow>
-            <cylinderGeometry args={[0.2, 0.2, 4, 8]} />
-            <meshPhongMaterial color="#8B4513" />
-          </mesh>
-          <mesh position={[-50, 2, (i - 10) * 10]} castShadow>
-            <cylinderGeometry args={[0.2, 0.2, 4, 8]} />
-            <meshPhongMaterial color="#8B4513" />
-          </mesh>
-          <mesh position={[(i - 10) * 10, 2, 50]} castShadow>
-            <cylinderGeometry args={[0.2, 0.2, 4, 8]} />
-            <meshPhongMaterial color="#8B4513" />
-          </mesh>
-          <mesh position={[(i - 10) * 10, 2, -50]} castShadow>
-            <cylinderGeometry args={[0.2, 0.2, 4, 8]} />
-            <meshPhongMaterial color="#8B4513" />
-          </mesh>
-        </group>
-      ))}
+      <ModularTerrainEnvironment />
 
       {/* Target Landing Pad */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.4, 0]} receiveShadow>
@@ -58,9 +21,6 @@ export default function Environment() {
         <meshPhongMaterial color="#ff4400" />
       </mesh>
 
-      {/* Reference Grid */}
-      <gridHelper args={[100, 50, "#444444", "#222222"]} position={[0, -0.45, 0]} />
-
       {/* All Obstacles (Default + User-Added) */}
       {allObstacles.map((obstacle) => (
         <mesh 
@@ -73,22 +33,6 @@ export default function Environment() {
           <meshPhongMaterial color={obstacle.color} />
         </mesh>
       ))}
-
-      {/* Skybox - use color if specified, otherwise texture */}
-      <mesh>
-        <sphereGeometry args={[500, 32, 32]} />
-        {skyColor ? (
-          <meshBasicMaterial 
-            color={skyColor} 
-            side={THREE.BackSide}
-          />
-        ) : (
-          <meshBasicMaterial 
-            map={skyTexture} 
-            side={THREE.BackSide}
-          />
-        )}
-      </mesh>
     </>
   );
 }

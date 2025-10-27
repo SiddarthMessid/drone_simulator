@@ -1,25 +1,23 @@
 import * as THREE from "three";
 import { PIDSetpoints } from "./pidController";
 import { useDrone } from "./stores/useDrone";
+import { DroneAdapter, DroneState, DroneCommand, DroneControllerConfig } from './interfaces/drone';
 
-export interface DroneCommand {
-  id: string;
-  type: 'takeoff' | 'land' | 'setPitch' | 'setRoll' | 'setYaw' | 'setThrottle' | 'moveTo' | 'hover';
-  parameters: any;
-  resolve: (value: any) => void;
-  reject: (reason: any) => void;
-  startTime: number;
-  timeout?: number;
-}
+const DEFAULT_CONFIG: DroneControllerConfig = {
+  maxSpeed: 5.0,
+  maxAltitude: 50.0,
+  positionTolerance: 0.5,
+  altitudeTolerance: 0.3,
+  angleTolerance: 0.05,
+  commandTimeout: 30000, // 30 seconds default timeout
+  safetyLimits: {
+    maxTiltAngle: Math.PI / 3, // 60 degrees
+    maxYawRate: 2.0,
+    maxVerticalSpeed: 3.0
+  }
+};
 
-export interface DroneControllerOptions {
-  maxSpeed?: number;
-  positionTolerance?: number;
-  altitudeTolerance?: number;
-  angleTolerance?: number;
-}
-
-export interface MovementTarget {
+interface MovementTarget {
   position?: THREE.Vector3;
   altitude?: number;
   heading?: number;
@@ -33,21 +31,60 @@ export interface MovementTarget {
  * for controlling drone movement, takeoff, landing, and navigation.
  */
 export class DroneController {
+  private adapter: DroneAdapter;
+  private state: DroneState | null = null;
   private currentCommand: DroneCommand | null = null;
   private commandQueue: DroneCommand[] = [];
   private targets: MovementTarget = {};
-  private options: Required<DroneControllerOptions>;
+  private config: DroneControllerConfig;
   private isAutopilot = false;
   private manualSetpoints: PIDSetpoints = { pitch: 0, roll: 0, yaw: 0, throttle: 0 };
   
-  constructor(options: DroneControllerOptions = {}) {
-    this.options = {
-      maxSpeed: 5.0,
-      positionTolerance: 0.5,
-      altitudeTolerance: 0.3,
-      angleTolerance: 0.05,
-      ...options
-    };
+  constructor(adapter: DroneAdapter, config: Partial<DroneControllerConfig> = {}) {
+    this.adapter = adapter;
+    this.config = { ...DEFAULT_CONFIG, ...config };
+    
+    this.adapter.onStateUpdate(this.handleStateUpdate.bind(this));
+  }
+
+  async connect(): Promise<void> {
+    await this.adapter.connect();
+  }
+
+  async disconnect(): Promise<void> {
+    await this.adapter.disconnect();
+  }
+
+  private handleStateUpdate(newState: DroneState): void {
+    this.state = newState;
+    this.validateSafetyLimits(newState);
+    this.adapter.sendTelemetry(newState);
+  }
+
+  private validateSafetyLimits(state: DroneState): void {
+    const { maxTiltAngle, maxYawRate, maxVerticalSpeed } = this.config.safetyLimits;
+    
+    // Check tilt angles
+    if (Math.abs(state.rotation.x) > maxTiltAngle || 
+        Math.abs(state.rotation.z) > maxTiltAngle) {
+      console.error('Safety limit exceeded: Max tilt angle');
+      this.emergencyStop();
+      return;
+    }
+    
+    // Check yaw rate
+    if (Math.abs(state.angularVelocity.y) > maxYawRate) {
+      console.error('Safety limit exceeded: Max yaw rate');
+      this.emergencyStop();
+      return;
+    }
+    
+    // Check vertical speed
+    if (Math.abs(state.velocity.y) > maxVerticalSpeed) {
+      console.error('Safety limit exceeded: Max vertical speed');
+      this.emergencyStop();
+      return;
+    }
   }
 
   /**
@@ -345,7 +382,7 @@ export class DroneController {
       const positionError = this.targets.position.clone().sub(droneStore.position);
       const distance = positionError.length();
       
-      if (distance > this.options.positionTolerance) {
+      if (distance > this.config.positionTolerance) {
         // Calculate desired pitch and roll based on position error
         const maxTilt = 0.3; // 17 degrees
         setpoints.pitch = Math.max(-maxTilt, Math.min(maxTilt, -positionError.z * 0.5));
@@ -383,7 +420,7 @@ export class DroneController {
         const targetAlt = this.currentCommand.type === 'takeoff' 
           ? this.currentCommand.parameters.targetAltitude 
           : 0.5;
-        isComplete = Math.abs(droneStore.position.y - targetAlt) < this.options.altitudeTolerance;
+        isComplete = Math.abs(droneStore.position.y - targetAlt) < this.config.altitudeTolerance;
         break;
         
       case 'hover':
@@ -394,23 +431,23 @@ export class DroneController {
       case 'moveTo':
         if (this.targets.position) {
           const distance = droneStore.position.distanceTo(this.targets.position);
-          isComplete = distance < this.options.positionTolerance;
+          isComplete = distance < this.config.positionTolerance;
         }
         break;
         
       case 'setPitch':
         // Check if pitch target is achieved and maintained
-        isComplete = Math.abs(droneStore.rotation.x - (this.targets.pitch || 0)) < this.options.angleTolerance;
+        isComplete = Math.abs(droneStore.rotation.x - (this.targets.pitch || 0)) < this.config.angleTolerance;
         break;
         
       case 'setRoll':
         // Check if roll target is achieved and maintained  
-        isComplete = Math.abs(droneStore.rotation.z - (this.targets.roll || 0)) < this.options.angleTolerance;
+        isComplete = Math.abs(droneStore.rotation.z - (this.targets.roll || 0)) < this.config.angleTolerance;
         break;
         
       case 'setYaw':
         // Check if yaw target is achieved and maintained
-        isComplete = Math.abs(droneStore.rotation.y - (this.targets.heading || 0)) < this.options.angleTolerance;
+        isComplete = Math.abs(droneStore.rotation.y - (this.targets.heading || 0)) < this.config.angleTolerance;
         break;
         
       case 'setThrottle':
@@ -421,7 +458,7 @@ export class DroneController {
     
     if (isComplete) {
       const commandType = this.currentCommand.type;
-      this.currentCommand.resolve(true);
+      this.currentCommand.resolve();
       this.currentCommand = null;
       
       // Only return to hover mode for movement commands, not for persistent commands
@@ -446,7 +483,49 @@ export class DroneController {
       this.isAutopilot = false;
     }
   }
+
+  emergencyStop(): void {
+    // Clear all pending commands
+    this.commandQueue = [];
+    
+    // Cancel current command if any
+    if (this.currentCommand) {
+      this.currentCommand.reject(new Error('Emergency stop initiated'));
+      this.currentCommand = null;
+    }
+    
+    // Disable autopilot
+    this.isAutopilot = false;
+    
+    // Clear all targets
+    this.targets = {};
+    
+    // Send emergency stop command to adapter
+    this.adapter.sendCommand({
+      id: `emergency_${Date.now()}`,
+      type: 'emergencyStop',
+      parameters: {},
+      timeout: 1000,
+      startTime: Date.now(),
+      resolve: () => {},
+      reject: () => {}
+    });
+  }
 }
 
-// Export singleton instance
-export const drone = new DroneController();
+// Export singleton instance with simulation adapter
+import { SimulationDroneAdapter } from './adapters/simulationAdapter';
+import { DronePhysics } from './dronePhysics';
+
+export const drone = new DroneController(
+  new SimulationDroneAdapter(new DronePhysics()),
+  {
+    maxSpeed: 5.0,
+    maxAltitude: 50.0,
+    safetyLimits: {
+      maxTiltAngle: Math.PI / 3,
+      maxYawRate: 2.0,
+      maxVerticalSpeed: 3.0
+    }
+  }
+);

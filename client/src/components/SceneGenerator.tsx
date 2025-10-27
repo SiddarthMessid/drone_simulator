@@ -4,6 +4,7 @@ import { generateScene } from "../lib/sceneGenerator";
 import { useEnvironment } from "../lib/stores/useEnvironment";
 import { Button } from "./ui/button";
 import { Sparkles, Trash2, RefreshCw } from "lucide-react";
+import TerrainEditor from "./TerrainEditor";
 
 export default function SceneGenerator() {
   const { setEnvironmentSize, obstacles } = useEnvironment();
@@ -144,6 +145,18 @@ export default function SceneGenerator() {
         }}>
           Procedurally generate complete environments for your drone simulator
         </p>
+      </div>
+
+      <div style={sectionStyle}>
+        <h4 style={{ 
+          margin: '0 0 16px 0', 
+          fontSize: '14px', 
+          fontWeight: '600',
+          color: '#c0c0c0'
+        }}>
+          Terrain Settings
+        </h4>
+        <TerrainEditor />
       </div>
 
       <div style={sectionStyle}>

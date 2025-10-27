@@ -19,12 +19,17 @@ export interface SceneSettings {
 
 export interface ObstacleTemplate {
   type: string;
-  color: string;
+  modelId?: string; // Reference to model in registry
+  color?: string; // Optional if using model
   baseSize: { x: number; y: number; z: number };
   sizeVariation: number;
   minCount: number;
   maxCount: number;
   placementRules: PlacementRules;
+  // Model-specific properties
+  modelScale?: { x: number; y: number; z: number };
+  modelRotation?: { x: number; y: number; z: number };
+  modelVariants?: string[]; // Array of alternate modelIds to randomly choose from
 }
 
 export interface PlacementRules {
