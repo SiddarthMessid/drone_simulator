@@ -6,6 +6,8 @@ import DroneSimulation from "./components/DroneSimulation";
 import CodeEditor from "./components/CodeEditor";
 import ControlPanel from "./components/ControlPanel";
 import WindControls from "./components/WindControls";
+import ModelUploader from "./components/ModelUploader";
+import ImportedModels from "./components/ImportedModels";
 import EnvironmentEditor from "./components/EnvironmentEditor";
 import SceneGenerator from "./components/SceneGenerator";
 import RetractableWindControls from "./components/RetractableWindControls";
@@ -195,8 +197,11 @@ function App() {
               >
                 <Suspense fallback={null}>
                   <DroneSimulation />
+                  <ImportedModels />
+                  <CameraControls />
                 </Suspense>
               </Canvas>
+              <ModelUploader />
             </ErrorBoundary>
 
             {/* Left Panel Toggle Button (when collapsed) */}

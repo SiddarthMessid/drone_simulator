@@ -10,7 +10,7 @@ interface TerrainConfigState {
 }
 
 export const useTerrainConfigStore = create<TerrainConfigState>((set) => ({
-  isFlat: false,
+  isFlat: true,
   config: {
     width: 200,
     height: 200,

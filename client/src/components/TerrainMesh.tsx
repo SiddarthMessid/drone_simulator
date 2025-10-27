@@ -42,8 +42,8 @@ export default function TerrainMesh({ config, textures, debug = false }: Terrain
         }]
       };
       const data = generator.generate(flatConfig);
-      // Set all heights to a small constant value for visibility
-      const constantHeight = 0.01; // Small positive height to ensure visibility
+      // Set terrain height to -0.7
+      const constantHeight = -0.7;
       for (let i = 0; i < data.positions.length; i += 3) {
         data.positions[i + 1] = constantHeight; // Y coordinate
       }
