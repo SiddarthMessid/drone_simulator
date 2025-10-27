@@ -132,7 +132,12 @@ export const useMultiDrone = create<{
   swarmBehavior: async (behavior: 'follow' | 'scatter' | 'gather') => {
     const { state } = get();
     const drones = Array.from(state.drones.entries());
-    if (drones.length < 2) return;
+    if (drones.length < 2) {
+      console.log('Swarm behavior requires at least 2 drones');
+      return;
+    }
+
+    console.log(`Activating ${behavior} swarm behavior with ${drones.length} drones`);
 
     switch (behavior) {
       case 'follow':
@@ -197,8 +202,12 @@ export const useMultiDrone = create<{
   formationFlight: (formation: 'triangle' | 'line' | 'circle') => {
     const { state } = get();
     const { drones, activeDroneId } = state;
-    if (!activeDroneId || drones.size < 2) return;
+    if (!activeDroneId || drones.size < 2) {
+      console.log('Formation flight requires at least 2 drones and an active leader');
+      return;
+    }
 
+    console.log(`Activating ${formation} formation with ${drones.size} drones`);
     const spacing = 3; // Distance between drones
     const positions: THREE.Vector3[] = [];
 

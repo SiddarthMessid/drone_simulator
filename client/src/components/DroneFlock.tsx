@@ -89,6 +89,12 @@ export default function DroneFlock() {
       const droneState = droneController.getState();
       const setpoints = droneController.getSetpoints();
       
+      // Debug logging for first frame only
+      if (state.clock.elapsedTime < 0.1) {
+        console.log(`Drone ${id} setpoints:`, setpoints);
+        console.log(`Drone ${id} position:`, droneState.position);
+      }
+      
       // Convert DroneState to PIDState
       const pidState = {
         pitch: droneState.rotation.x,
@@ -117,6 +123,7 @@ export default function DroneFlock() {
 
       // Play hit sound on collision
       if (collision.collided) {
+        console.log(`Drone ${id} collision detected!`, collision);
         playHit();
       }
 
