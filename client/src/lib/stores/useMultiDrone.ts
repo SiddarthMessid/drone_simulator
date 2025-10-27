@@ -131,34 +131,58 @@ export const useMultiDrone = create<{
   // Swarm behaviors
   swarmBehavior: async (behavior: 'follow' | 'scatter' | 'gather') => {
     const { state } = get();
-    const drones = Array.from(state.drones.entries());
-    if (drones.length < 2) {
+    const { drones, activeDroneId } = state;
+    
+    if (drones.size < 2) {
       console.log('Swarm behavior requires at least 2 drones');
       return;
     }
 
-    console.log(`Activating ${behavior} swarm behavior with ${drones.length} drones`);
+    console.log(`Activating ${behavior} swarm behavior with ${drones.size} drones`);
 
     switch (behavior) {
       case 'follow':
-        // Follow the leader (first drone)
-        const [leaderId, leader] = drones[0];
-        const leaderPos = state.dronePositions.get(leaderId);
-        if (!leaderPos) return;
+        // Set up continuous follow formation - drones follow leader in a line
+        if (!activeDroneId) {
+          console.log('No active drone set as leader');
+          return;
+        }
+        
+        const leader = drones.get(activeDroneId);
+        if (leader) {
+          leader.setAsLeader(true);
+          console.log(`Setting ${activeDroneId} as leader for follow mode`);
+        }
 
-        await Promise.all(drones.slice(1).map(async ([id, drone], index) => {
-          const followPos = new THREE.Vector3(
-            leaderPos.x - ((index + 1) * 2),
-            leaderPos.y,
-            leaderPos.z
-          );
-          await drone.moveTo(followPos);
-        }));
+        // Set up follow positions behind the leader
+        const followSpacing = 4;
+        let followerIndex = 0;
+        
+        drones.forEach((drone, id) => {
+          if (id !== activeDroneId) {
+            drone.setAsLeader(false);
+            // Position drones in a line behind the leader
+            const followOffset = new THREE.Vector3(
+              0,
+              0,
+              -(followerIndex + 1) * followSpacing
+            );
+            drone.setFormationTarget(followOffset);
+            console.log(`Drone ${id} set to follow at offset:`, followOffset);
+            followerIndex++;
+          }
+        });
         break;
 
       case 'scatter':
-        // Random scatter pattern
-        await Promise.all(drones.map(async ([_, drone]) => {
+        // Disable formation mode and scatter to random positions
+        drones.forEach((drone) => {
+          drone.setAsLeader(false);
+          drone.clearFormationTarget(); // Clear formation target to allow scatter
+        });
+        
+        const droneArray = Array.from(drones.values());
+        await Promise.all(droneArray.map(async (drone) => {
           const randomPos = new THREE.Vector3(
             (Math.random() - 0.5) * 20,
             5 + Math.random() * 5,
@@ -169,9 +193,15 @@ export const useMultiDrone = create<{
         break;
 
       case 'gather':
-        // Gather at center point
+        // Disable formation mode and gather at center
+        drones.forEach((drone) => {
+          drone.setAsLeader(false);
+          drone.clearFormationTarget(); // Clear formation target to allow gather
+        });
+        
         const centerPos = new THREE.Vector3(0, 10, 0);
-        await Promise.all(drones.map(async ([_, drone]) => {
+        const droneArray2 = Array.from(drones.values());
+        await Promise.all(droneArray2.map(async (drone) => {
           await drone.moveTo(centerPos);
         }));
         break;
@@ -208,35 +238,45 @@ export const useMultiDrone = create<{
     }
 
     console.log(`Activating ${formation} formation with ${drones.size} drones`);
-    const spacing = 3; // Distance between drones
+    const spacing = 4; // Distance between drones - increased for better visibility
     const positions: THREE.Vector3[] = [];
+    const followerCount = drones.size - 1;
 
     switch (formation) {
       case 'triangle':
-        positions.push(
-          new THREE.Vector3(-spacing, 0, -spacing),
-          new THREE.Vector3(spacing, 0, -spacing),
-          new THREE.Vector3(0, 0, -spacing * 2),
-          new THREE.Vector3(-spacing * 2, 0, -spacing * 2),
-          new THREE.Vector3(spacing * 2, 0, -spacing * 2),
-          new THREE.Vector3(0, 0, -spacing * 3)
-        );
+        // V-formation (triangle) - classic flight formation
+        for (let i = 0; i < followerCount; i++) {
+          const side = i % 2 === 0 ? -1 : 1; // Alternate left and right
+          const row = Math.floor(i / 2) + 1;
+          positions.push(new THREE.Vector3(
+            side * spacing * row,
+            0,
+            -spacing * row
+          ));
+        }
         break;
 
       case 'line':
-        for (let i = 0; i < state.maxDrones - 1; i++) {
-          positions.push(new THREE.Vector3(spacing * (i - (state.maxDrones - 2) / 2), 0, -spacing));
+        // Horizontal line formation
+        const lineStart = -spacing * (followerCount - 1) / 2;
+        for (let i = 0; i < followerCount; i++) {
+          positions.push(new THREE.Vector3(
+            lineStart + spacing * i,
+            0,
+            -spacing
+          ));
         }
         break;
 
       case 'circle':
-        const radius = spacing * 1.5;
-        for (let i = 0; i < state.maxDrones - 1; i++) {
-          const angle = (i / (state.maxDrones - 1)) * Math.PI * 2;
+        // Circular formation around the leader
+        const radius = spacing * 1.2;
+        for (let i = 0; i < followerCount; i++) {
+          const angle = (i / followerCount) * Math.PI * 2;
           positions.push(new THREE.Vector3(
             Math.cos(angle) * radius,
             0,
-            Math.sin(angle) * radius - spacing
+            Math.sin(angle) * radius
           ));
         }
         break;
@@ -246,6 +286,7 @@ export const useMultiDrone = create<{
     const leader = drones.get(activeDroneId);
     if (leader) {
       leader.setAsLeader(true);
+      console.log(`Setting ${activeDroneId} as leader for ${formation} formation`);
     }
 
     let posIndex = 0;
@@ -253,7 +294,9 @@ export const useMultiDrone = create<{
       if (id !== activeDroneId) {
         drone.setAsLeader(false);
         if (posIndex < positions.length) {
-          drone.setFormationTarget(positions[posIndex++]);
+          const offset = positions[posIndex++];
+          drone.setFormationTarget(offset);
+          console.log(`Drone ${id} formation offset:`, offset);
         }
       }
     });

@@ -139,6 +139,12 @@ export class DroneController {
     this.isAutopilot = true;
   }
 
+  clearFormationTarget(): void {
+    this.formationTarget = null;
+    this.leaderPosition = null;
+    this.leaderRotation = null;
+  }
+
   setHoverMode(enabled: boolean): void {
     if (enabled) {
       // Set default hover throttle to keep drone in the air
@@ -157,7 +163,7 @@ export class DroneController {
   }
 
   private calculateFormationSetpoints(): PIDSetpoints {
-    const setpoints: PIDSetpoints = { pitch: 0, roll: 0, yaw: 0, throttle: 0 };
+    const setpoints: PIDSetpoints = { pitch: 0, roll: 0, yaw: 0, throttle: 0.5 };
     
     if (this.formationTarget && this.leaderPosition && this.leaderRotation && this.state) {
       // Transform formation target to world space based on leader's position and rotation
@@ -167,26 +173,75 @@ export class DroneController {
       targetWorld.applyMatrix4(rotationMatrix);
       targetWorld.add(this.leaderPosition);
 
-      // Calculate direction to target
-      const direction = new THREE.Vector3().subVectors(targetWorld, this.state.position);
-      const distance = direction.length();
+      // Calculate position error (distance vector to target)
+      const positionError = new THREE.Vector3().subVectors(targetWorld, this.state.position);
+      const distance = positionError.length();
       
-      // Calculate yaw target
-      const targetYaw = Math.atan2(direction.x, direction.z);
-      const yawDiff = targetYaw - this.state.rotation.y;
-      setpoints.yaw = Math.sin(yawDiff);
-
-      // Calculate pitch and throttle
-      setpoints.pitch = -direction.z * 0.1;
-      setpoints.throttle = (targetWorld.y - this.state.position.y) * 0.1 + 0.5;
-
-      // Calculate roll
-      setpoints.roll = -direction.x * 0.1;
-
-      // Scale based on distance
-      const scaleFactor = Math.min(distance / 2, 1);
-      setpoints.pitch *= scaleFactor;
-      setpoints.roll *= scaleFactor;
+      // Debug logging (only log occasionally to avoid spam)
+      if (Math.random() < 0.01) {
+        console.log('Formation control:', {
+          formationOffset: this.formationTarget,
+          leaderPos: this.leaderPosition,
+          targetWorld: targetWorld,
+          currentPos: this.state.position,
+          distance: distance.toFixed(2)
+        });
+      }
+      
+      // Calculate altitude control (throttle)
+      const altitudeError = targetWorld.y - this.state.position.y;
+      const altitudeGain = 0.5;
+      setpoints.throttle = Math.max(0, Math.min(1, 0.5 + altitudeError * altitudeGain));
+      
+      // Only apply horizontal control if we're reasonably close in altitude
+      if (distance > 0.5) {
+        // Normalize the horizontal error
+        const horizontalError = new THREE.Vector2(positionError.x, positionError.z);
+        const horizontalDistance = horizontalError.length();
+        
+        if (horizontalDistance > 0.1) {
+          // Calculate desired yaw to face the target
+          const targetYaw = Math.atan2(positionError.x, positionError.z);
+          let yawError = targetYaw - this.state.rotation.y;
+          
+          // Normalize yaw error to [-PI, PI]
+          while (yawError > Math.PI) yawError -= 2 * Math.PI;
+          while (yawError < -Math.PI) yawError += 2 * Math.PI;
+          
+          // Smooth yaw control
+          setpoints.yaw = Math.max(-0.5, Math.min(0.5, yawError * 0.5));
+          
+          // Use proportional control for pitch and roll based on position error
+          // With velocity damping to prevent oscillation
+          const maxTiltGain = 0.3;
+          const dampingGain = 0.1;
+          
+          // Calculate control in drone's local frame
+          const forwardError = positionError.z * Math.cos(this.state.rotation.y) + 
+                               positionError.x * Math.sin(this.state.rotation.y);
+          const lateralError = -positionError.z * Math.sin(this.state.rotation.y) + 
+                               positionError.x * Math.cos(this.state.rotation.y);
+          
+          // Transform velocity to drone's local frame for proper damping
+          const localVelocityForward = this.state.velocity.z * Math.cos(this.state.rotation.y) + 
+                                        this.state.velocity.x * Math.sin(this.state.rotation.y);
+          const localVelocityLateral = -this.state.velocity.z * Math.sin(this.state.rotation.y) + 
+                                        this.state.velocity.x * Math.cos(this.state.rotation.y);
+          
+          // Apply proportional control with velocity damping in local frame
+          setpoints.pitch = Math.max(-0.3, Math.min(0.3, 
+            -forwardError * maxTiltGain - localVelocityForward * dampingGain));
+          setpoints.roll = Math.max(-0.3, Math.min(0.3, 
+            -lateralError * maxTiltGain - localVelocityLateral * dampingGain));
+          
+          // Reduce control authority when far from target to prevent overshoot
+          if (distance > 5) {
+            const distanceScale = Math.max(0.3, Math.min(1, 5 / distance));
+            setpoints.pitch *= distanceScale;
+            setpoints.roll *= distanceScale;
+          }
+        }
+      }
     }
 
     return setpoints;
