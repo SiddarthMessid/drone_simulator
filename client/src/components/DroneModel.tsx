@@ -3,7 +3,11 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { useDrone } from "../lib/stores/useDrone";
 
-export default function DroneModel() {
+interface DroneModelProps {
+  color?: string;
+}
+
+export default function DroneModel({ color = "#2a2a2a" }: DroneModelProps) {
   const groupRef = useRef<THREE.Group>(null);
   const rotorRefs = useRef<THREE.Mesh[]>([]);
   const { telemetry } = useDrone();
@@ -36,7 +40,7 @@ export default function DroneModel() {
       {/* Main Body */}
       <mesh castShadow receiveShadow>
         <boxGeometry args={[2, 0.3, 2]} />
-        <meshPhongMaterial color="#2a2a2a" />
+        <meshPhongMaterial color={color} />
       </mesh>
 
       {/* Center Hub */}
