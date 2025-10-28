@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { AABB } from "./stores/useEnvironment";
 import { useEnvironment } from "./stores/useEnvironment";
+import { DEFAULT_PHYSICS_CONFIG, PhysicsConfig } from './physicsConfig';
 
 export interface DroneState {
   position: THREE.Vector3;
@@ -22,12 +23,28 @@ export interface CollisionResult {
 }
 
 export class DronePhysics {
-  private mass: number = 1.5; // kg
+  private mass: number; // kg
   private inertia: THREE.Vector3 = new THREE.Vector3(0.03, 0.03, 0.05); // kg⋅m²
   private drag: number = 0.1;
   private angularDrag: number = 0.5;
-  private gravity: number = 9.81;
+  private gravity: number;
   private maxTilt: number = Math.PI / 3; // 60 degrees max tilt
+  // Physical thrust model (configurable)
+  private thrustFactor: number;
+  private maxThrust: number;
+  // Smoothed internal motor thrust (N)
+  private motorThrust: number = 0;
+  // Motor time constant (seconds) used for first-order filtering of thrust commands
+  private motorTau: number;
+
+  constructor(config?: Partial<PhysicsConfig>) {
+    const c = { ...DEFAULT_PHYSICS_CONFIG, ...(config || {}) };
+    this.mass = c.mass;
+    this.gravity = c.gravity;
+    this.thrustFactor = c.thrustFactor;
+    this.motorTau = c.motorTau;
+    this.maxThrust = this.thrustFactor * this.mass * this.gravity;
+  }
   
   // Drone collision box half-extents
   private readonly DRONE_HALF_EXTENTS = new THREE.Vector3(0.6, 0.3, 0.6);
@@ -49,8 +66,8 @@ export class DronePhysics {
       angularVelocity: currentState.angularVelocity.clone()
     };
 
-    // Calculate forces
-    const forces = this.calculateForces(newState, motorOutputs, windForce);
+  // Calculate forces
+  const forces = this.calculateForces(newState, motorOutputs, windForce, dt);
     const torques = this.calculateTorques(newState, motorOutputs);
 
     // Update angular velocity (torque / inertia)
@@ -70,10 +87,10 @@ export class DronePhysics {
     newState.rotation.x = Math.max(-this.maxTilt, Math.min(this.maxTilt, newState.rotation.x));
     newState.rotation.z = Math.max(-this.maxTilt, Math.min(this.maxTilt, newState.rotation.z));
 
-    // Update linear velocity (force / mass)
-    newState.velocity.x += (forces.x / this.mass) * dt;
-    newState.velocity.y += (forces.y / this.mass) * dt;
-    newState.velocity.z += (forces.z / this.mass) * dt;
+  // Update linear velocity (force / mass)
+  newState.velocity.x += (forces.x / this.mass) * dt;
+  newState.velocity.y += (forces.y / this.mass) * dt;
+  newState.velocity.z += (forces.z / this.mass) * dt;
 
     // Apply drag
     newState.velocity.multiplyScalar(1 - this.drag * dt);
@@ -92,7 +109,7 @@ export class DronePhysics {
     // Apply final position
     newState.position.copy(proposedPosition);
 
-    // Terrain collision
+    // Terrain collision (use spring-damper contact to avoid snapping)
     const { terrain } = useEnvironment.getState();
     if (terrain) {
       const terrainHeight = useEnvironment.getState().getTerrainHeight(
@@ -102,13 +119,21 @@ export class DronePhysics {
       
       const minClearance = 0.5; // Minimum height above terrain
       if (newState.position.y < terrainHeight + minClearance) {
-        newState.position.y = terrainHeight + minClearance;
-        newState.velocity.y = Math.max(0, newState.velocity.y);
-        
-        // Reduce velocity on terrain contact
-        newState.velocity.multiplyScalar(0.8);
-        newState.angularVelocity.multiplyScalar(0.8);
-        
+        // penetration (positive when penetrating into ground)
+        const penetration = (terrainHeight + minClearance) - newState.position.y;
+        // contact spring-damper constants (tunable)
+        const k_contact = 60; // N/m
+        const k_damping = 12; // N*s/m
+        // compute contact acceleration to gently push drone out
+        const contactAccel = (k_contact * penetration - k_damping * newState.velocity.y) / this.mass;
+        // apply corrective velocity change
+        newState.velocity.y += contactAccel * dt;
+
+        // Slight damping for tangential motion to simulate friction
+        newState.velocity.x *= 0.9;
+        newState.velocity.z *= 0.9;
+        newState.angularVelocity.multiplyScalar(0.9);
+
         if (!collision.collided) {
           collision.collided = true;
           collision.axis = 'y';
@@ -116,12 +141,17 @@ export class DronePhysics {
       }
     } else {
       // Fallback to flat ground if no terrain data
-      if (newState.position.y < 0.5) {
-        newState.position.y = 0.5;
-        newState.velocity.y = Math.max(0, newState.velocity.y);
-        newState.velocity.multiplyScalar(0.8);
-        newState.angularVelocity.multiplyScalar(0.8);
-        
+      const minClearance = 0.5;
+      if (newState.position.y < minClearance) {
+        const penetration = (minClearance) - newState.position.y;
+        const k_contact = 60;
+        const k_damping = 12;
+        const contactAccel = (k_contact * penetration - k_damping * newState.velocity.y) / this.mass;
+        newState.velocity.y += contactAccel * dt;
+        newState.velocity.x *= 0.9;
+        newState.velocity.z *= 0.9;
+        newState.angularVelocity.multiplyScalar(0.9);
+
         if (!collision.collided) {
           collision.collided = true;
           collision.axis = 'y';
@@ -135,38 +165,35 @@ export class DronePhysics {
   private calculateForces(
     state: DroneState, 
     motorOutputs: MotorOutputs, 
-    windForce: THREE.Vector3
+    windForce: THREE.Vector3,
+    dt: number
   ): THREE.Vector3 {
     const forces = new THREE.Vector3();
 
     // Gravity
     forces.y -= this.mass * this.gravity;
 
-    // Thrust (always upward in drone's local frame)
-    const thrustMagnitude = (motorOutputs.throttle + 0.5) * this.mass * this.gravity * 1.2;
-    
-    // Set minimum thrust to prevent sudden drops
-    const minThrust = this.mass * this.gravity * 0.2; // 20% minimum thrust
-    const smoothedThrust = Math.max(thrustMagnitude, minThrust);
-    
-    // Transform thrust to world coordinates based on drone rotation
-    const thrustWorld = new THREE.Vector3(0, smoothedThrust, 0);
-    
-    // Apply rotation to thrust vector
+    // Desired thrust based on normalized throttle [0,1]
+    const desiredThrottle = Math.max(0, Math.min(1, motorOutputs.throttle));
+    const desiredThrust = desiredThrottle * this.maxThrust;
+
+    // First-order motor model (smooth thrust changes)
+    const alpha = 1 - Math.exp(-Math.max(dt, 1e-6) / this.motorTau);
+    this.motorThrust += (desiredThrust - this.motorThrust) * alpha;
+
+    // Transform thrust to world coordinates based on drone rotation (body up is +Y)
+    const thrustWorld = new THREE.Vector3(0, this.motorThrust, 0);
     const rotationMatrix = new THREE.Matrix4().makeRotationFromEuler(
       new THREE.Euler(state.rotation.x, state.rotation.y, state.rotation.z, 'XYZ')
     );
     thrustWorld.applyMatrix4(rotationMatrix);
-    
     forces.add(thrustWorld);
 
     // Wind forces
     forces.add(windForce);
 
-    // Horizontal movement based on tilt
-    const horizontalForce = 8; // Force multiplier for horizontal movement
-    forces.x += Math.sin(state.rotation.z) * thrustMagnitude * 0.1;
-    forces.z -= Math.sin(state.rotation.x) * thrustMagnitude * 0.1;
+    // Note: lateral acceleration naturally comes from projecting the thrust
+    // vector into world frame (no separate heuristic horizontal force needed).
 
     return forces;
   }

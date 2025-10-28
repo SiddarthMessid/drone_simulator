@@ -14,6 +14,8 @@ export default function MultiDroneController() {
     formationFlight,
     swarmBehavior,
     emergencyLandAll,
+    getDrone,
+    updateFormationPositions,
     getDroneCount
   } = useMultiDrone();
 
@@ -114,10 +116,10 @@ export default function MultiDroneController() {
           </div>
         </div>
 
-        {/* Swarm Behaviors */}
+        {/* Swarm Behaviors: simplified to only Follow (toggle) */}
         <div className="space-y-2">
           <h3 className="text-sm font-semibold">Swarm Behaviors</h3>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 gap-2">
             <Button
               onClick={() => swarmBehavior('follow')}
               disabled={getDroneCount() < 2}
@@ -125,25 +127,24 @@ export default function MultiDroneController() {
               size="sm"
             >
               <Users className="w-4 h-4 mr-1" />
-              Follow
+              Follow (toggle)
             </Button>
             <Button
-              onClick={() => swarmBehavior('scatter')}
-              disabled={getDroneCount() < 2}
-              variant="outline"
-              size="sm"
-            >
-              <Wind className="w-4 h-4 mr-1" />
-              Scatter
-            </Button>
-            <Button
-              onClick={() => swarmBehavior('gather')}
-              disabled={getDroneCount() < 2}
-              variant="outline"
+              onClick={() => {
+                if (!state.activeDroneId) return;
+                const drone = getDrone(state.activeDroneId);
+                if (!drone) return;
+                const enabled = typeof drone.isPositionHoldEnabled === 'function' ? drone.isPositionHoldEnabled() : false;
+                drone.enablePositionHold(!enabled);
+                // Trigger an update to store so UI re-renders and other drones get updated
+                updateFormationPositions();
+              }}
+              disabled={!state.activeDroneId}
+              variant={state.activeDroneId && getDrone(state.activeDroneId) && typeof getDrone(state.activeDroneId)!.isPositionHoldEnabled === 'function' && getDrone(state.activeDroneId)!.isPositionHoldEnabled() ? 'default' : 'outline'}
               size="sm"
             >
               <Target className="w-4 h-4 mr-1" />
-              Gather
+              Position Hold
             </Button>
           </div>
         </div>

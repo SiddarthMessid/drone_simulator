@@ -15,6 +15,7 @@ import { PIDController } from "../lib/pidController";
 import { DronePhysics } from "../lib/dronePhysics";
 import { drone } from "../lib/droneController";
 import { gamepadController } from "../lib/gamepadController";
+import { useMission } from "../lib/stores/useMission";
 
 export default function DroneSimulation() {
   const droneRef = useRef<THREE.Group>(null);
@@ -225,6 +226,27 @@ export default function DroneSimulation() {
       {/* Environment */}
       <Environment />
 
+      {/* Invisible click plane for mission point selection */}
+      <mesh
+        position={[0, 0, 0]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        onPointerDown={(e: any) => {
+          // e.point is the world coordinate of the click
+          const { mode, setStart, setStop, addScanPoint } = useMission.getState();
+          const p: THREE.Vector3 = e.point.clone();
+          if (mode === 'selectStart') {
+            setStart(p);
+          } else if (mode === 'selectStop') {
+            setStop(p);
+          } else if (mode === 'selectScan') {
+            addScanPoint(p);
+          }
+        }}
+      >
+        <planeGeometry args={[1000, 1000]} />
+        <meshBasicMaterial visible={false} />
+      </mesh>
+
       {/* Drone */}
       <group ref={droneRef}>
         <DroneModel />
@@ -254,6 +276,38 @@ export default function DroneSimulation() {
           />
         </group>
       ))}
+
+      {/* Mission markers (start/stop/scan points) */}
+      {(() => {
+        const { startPoint, stopPoint, scanPoints } = useMission.getState();
+        const markers: any[] = [];
+        if (startPoint) {
+          markers.push(
+            <mesh key="mission_start" position={[startPoint.x, startPoint.y + 0.2, startPoint.z]}>
+              <sphereGeometry args={[0.2, 12, 12]} />
+              <meshStandardMaterial color="#00ff00" />
+            </mesh>
+          );
+        }
+        if (stopPoint) {
+          markers.push(
+            <mesh key="mission_stop" position={[stopPoint.x, stopPoint.y + 0.2, stopPoint.z]}>
+              <sphereGeometry args={[0.2, 12, 12]} />
+              <meshStandardMaterial color="#ff0000" />
+            </mesh>
+          );
+        }
+        scanPoints.forEach((s) => {
+          markers.push(
+            <mesh key={s.id} position={[s.position.x, s.position.y + 0.2, s.position.z]}>
+              <boxGeometry args={[0.25, 0.25, 0.25]} />
+              <meshStandardMaterial color="#00aaff" />
+            </mesh>
+          );
+        });
+
+        return markers;
+      })()}
     </>
   );
 }

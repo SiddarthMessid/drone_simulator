@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { PIDSetpoints } from "./pidController";
 import { useDrone } from "./stores/useDrone";
 import { DroneAdapter, DroneState, DroneCommand, DroneControllerConfig } from './interfaces/drone';
+import { DEFAULT_PHYSICS_CONFIG } from './physicsConfig';
 
 const DEFAULT_CONFIG: DroneControllerConfig = {
   maxSpeed: 5.0,
@@ -39,6 +40,11 @@ export class DroneController {
   private config: DroneControllerConfig;
   private isAutopilot = false;
   private manualSetpoints: PIDSetpoints = { pitch: 0, roll: 0, yaw: 0, throttle: 0 };
+  // Short-lived throttle applied when engaging position-hold to prevent
+  // an immediate descent while the altitude controller stabilizes.
+  private holdThrottleExpire: number | null = null;
+  // Track previous manual-active state to detect transitions into hold
+  private lastManualActive: boolean = false;
   
   constructor(adapter: DroneAdapter, config: Partial<DroneControllerConfig> = {}) {
     this.adapter = adapter;
@@ -344,7 +350,46 @@ export class DroneController {
     
     // Check command timeout
     this.checkCommandTimeout();
-    
+    // Special handling: global main-drone position-hold from store
+    const droneStore = useDrone.getState();
+    if (droneStore.positionHoldEnabled) {
+      // Throttle-only override: when hold is enabled, only throttle > deadzone
+      // lets the pilot fly manually. This ensures that when the pilot releases
+      // throttle the drone captures and holds its current world position.
+      const deadzone = 0.05;
+      const manualActive = Math.abs(manualControls.throttle) > deadzone;
+
+      if (manualActive) {
+        // Pilot is commanding vertical motion: allow manual controls.
+        this.targets.position = undefined;
+        this.isAutopilot = false;
+        this.lastManualActive = true;
+        return manualControls;
+      } else {
+        // Throttle released: engage autopilot hold.
+        this.isAutopilot = true;
+
+        // If we just transitioned from manual -> hold, recapture current position
+        // so the hold point is the place where throttle was released.
+        if (this.lastManualActive || !droneStore.holdPosition) {
+          useDrone.getState().enablePositionHold(true);
+          // Give a small hover throttle buffer while autopilot takes over.
+          const hoverThrottle = 1 / Math.max(0.0001, DEFAULT_PHYSICS_CONFIG.thrustFactor);
+          this.targets.throttle = hoverThrottle;
+          this.holdThrottleExpire = Date.now() + 500; // ms
+        }
+
+        // Update local target to match store (captured above)
+        if (droneStore.holdPosition) {
+          this.targets.position = droneStore.holdPosition.clone();
+          this.targets.altitude = droneStore.holdPosition.y;
+        }
+
+        this.lastManualActive = false;
+        // fall through to autopilot setpoint generation
+      }
+    }
+
     if (!this.isAutopilot) {
       // Use manual controls when not in autopilot mode
       return manualControls;
@@ -367,6 +412,12 @@ export class DroneController {
     const droneStore = useDrone.getState();
     const setpoints: PIDSetpoints = { pitch: 0, roll: 0, yaw: 0, throttle: 0 };
     
+    // Expire any short-lived hold throttle
+    if (this.holdThrottleExpire && Date.now() > this.holdThrottleExpire) {
+      this.targets.throttle = undefined;
+      this.holdThrottleExpire = null;
+    }
+
     // Direct throttle control (takes priority over altitude control)
     if (this.targets.throttle !== undefined) {
       setpoints.throttle = this.targets.throttle;

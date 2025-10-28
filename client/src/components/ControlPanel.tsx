@@ -1,6 +1,8 @@
 import { useDrone } from "../lib/stores/useDrone";
 import { gamepadController } from "../lib/gamepadController";
 import { useEffect, useState } from "react";
+import { Button } from './ui/button';
+import { Target } from 'lucide-react';
 
 export default function ControlPanel() {
   const { telemetry, pidParams } = useDrone();
@@ -112,6 +114,23 @@ export default function ControlPanel() {
         <div style={{...infoStyle, borderBottom: 'none'}}>
           <span>Throttle:</span>
           <span style={valueStyle}>{(telemetry.throttle * 100).toFixed(0)}%</span>
+        </div>
+      </div>
+
+      {/* Main drone position hold */}
+      <div style={{ marginTop: '18px' }}>
+        <div style={{ marginBottom: '8px', color: '#a0a0a0', fontSize: '13px' }}>Position Hold</div>
+        <div>
+          <Button
+            size="sm"
+            onClick={() => {
+              const s = useDrone.getState();
+              s.enablePositionHold(!s.positionHoldEnabled);
+            }}
+            variant={useDrone.getState().positionHoldEnabled ? 'default' : 'outline'}
+          >
+            <Target className="w-4 h-4 mr-2" /> {useDrone.getState().positionHoldEnabled ? 'Holding' : 'Hold Position'}
+          </Button>
         </div>
       </div>
 

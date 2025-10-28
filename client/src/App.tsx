@@ -1,6 +1,6 @@
 import { Canvas } from "@react-three/fiber";
 import { KeyboardControls } from "@react-three/drei";
-import { Suspense, useState } from "react";
+import React, { Suspense, useState } from "react";
 import * as THREE from "three";
 import DroneSimulation from "./components/DroneSimulation";
 import CodeEditor from "./components/CodeEditor";
@@ -15,8 +15,9 @@ import WebGLFallback from "./components/WebGLFallback";
 import CameraControls from "./components/CameraControls";
 import DroneFlock from "./components/DroneFlock";
 import MultiDroneController from "./components/MultiDroneController";
+import MissionPlanner from "./components/MissionPlanner";
 import { Button } from "./components/ui/button";
-import { Settings, Wind, BarChart3, Code, ChevronLeft, ChevronRight, Terminal, ChevronUp, Sparkles, Users } from "lucide-react";
+import { Settings, Wind, BarChart3, Code, ChevronLeft, ChevronRight, Terminal, ChevronUp, Sparkles, Users, Target } from "lucide-react";
 import DraggableWindow from "./components/DraggableWindow";
 import Console from "./components/Console";
 import "@fontsource/inter";
@@ -116,6 +117,7 @@ function App() {
   const [controlPanelOpen, setControlPanelOpen] = useState(false);
   const [sceneGeneratorOpen, setSceneGeneratorOpen] = useState(false);
   const [fleetPanelOpen, setFleetPanelOpen] = useState(false);
+  const [missionPanelOpen, setMissionPanelOpen] = useState(false);
 
   // Check WebGL availability early
   if (!isWebGLAvailable()) {
@@ -309,6 +311,19 @@ function App() {
                 <Users className="h-4 w-4 mr-2" />
                 Fleet
               </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setMissionPanelOpen(true)}
+                style={{ 
+                  color: '#888', 
+                  background: 'rgba(0,0,0,0.7)',
+                  border: '1px solid rgba(255,255,255,0.1)'
+                }}
+              >
+                <Target className="h-4 w-4 mr-2" />
+                Mission
+              </Button>
             </div>
 
             {/* Console Toggle Button (when collapsed) */}
@@ -430,6 +445,21 @@ function App() {
             height={550}
           >
             <MultiDroneController />
+          </DraggableWindow>
+
+          <DraggableWindow
+            title="Mission Planner"
+            isOpen={missionPanelOpen}
+            onClose={() => setMissionPanelOpen(false)}
+            initialPosition={{ x: typeof window !== 'undefined' ? window.innerWidth - 420 : 800, y: 250 }}
+            width={400}
+            height={360}
+          >
+            {/* Lazy load MissionPlanner to keep bundle small */}
+            <React.Suspense fallback={<div>Loading...</div>}>
+              {/** Import component dynamically to avoid top-level import issues */}
+              <MissionPlanner />
+            </React.Suspense>
           </DraggableWindow>
         </div>
       </KeyboardControls>
