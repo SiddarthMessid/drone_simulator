@@ -30,12 +30,14 @@ export const useMultiDrone = create<{
   state: MultiDroneState;
   toggleEnabled: () => void;
   addDrone: () => void;
+  autoAssignFormation: () => void;
   removeDrone: (id: string) => void;
   setActiveDrone: (id: string) => void;
   getDrone: (id: string) => DroneController | undefined;
   updateDronePosition: (id: string, position: THREE.Vector3) => void;
   formationFlight: (formation: 'triangle' | 'line' | 'circle') => void;
   updateFormationPositions: () => void;
+  updateMainDroneFormation: () => void;
   swarmBehavior: (behavior: 'follow' | 'scatter' | 'gather') => Promise<void>;
   emergencyLandAll: () => Promise<void>;
   getDroneCount: () => number;
@@ -94,14 +96,45 @@ export const useMultiDrone = create<{
     state.dronePositions.set(id, position);
     state.droneColors.set(id, DEFAULT_COLORS[state.drones.size - 1]);
 
-    // Set first drone as leader by default
-    if (!state.activeDroneId) {
-      state.activeDroneId = id;
-      controller.setAsLeader(true);
-      console.log(`Setting ${id} as initial leader`);
-    }
+    // All drones are followers of the main drone
+    controller.setAsLeader(false);
+    
+    // Auto-assign formation position based on drone count
+    get().autoAssignFormation();
 
     set({ state: { ...state } });
+  },
+
+  autoAssignFormation: () => {
+    const { state } = get();
+    const { drones } = state;
+    
+    // Default to V-formation (triangle) for automatic following
+    const spacing = 5;
+    const positions: THREE.Vector3[] = [];
+    const droneCount = drones.size;
+
+    // Generate V-formation positions for all drones
+    for (let i = 0; i < droneCount; i++) {
+      const side = i % 2 === 0 ? -1 : 1;
+      const row = Math.floor(i / 2) + 1;
+      positions.push(new THREE.Vector3(
+        side * spacing * row,  // Lateral spread
+        0,                      // Same altitude as main drone
+        -spacing * row          // Behind main drone
+      ));
+    }
+
+    // Assign positions to all drones
+    let posIndex = 0;
+    drones.forEach((drone, id) => {
+      if (posIndex < positions.length) {
+        const offset = positions[posIndex++];
+        drone.setFormationTarget(offset);
+        drone.setAsLeader(false);
+        console.log(`Auto-assigned drone ${id} formation offset:`, offset);
+      }
+    });
   },
 
   removeDrone: (id: string) => {
@@ -420,5 +453,31 @@ export const useMultiDrone = create<{
         }
       });
     }
+  },
+
+  updateMainDroneFormation: () => {
+    const { state } = get();
+    const { drones, dronePositions } = state;
+    
+    if (drones.size === 0) return;
+    
+    // Get main drone position and rotation from the global drone store
+    const mainDroneState = useDrone.getState();
+    const mainDronePos = mainDroneState.position.clone();
+    const mainDroneRot = mainDroneState.rotation.clone();
+    
+    // Update all fleet drones' leader position so they can calculate their formation targets
+    drones.forEach((drone, id) => {
+      // Update where the leader (main drone) is
+      drone.updateLeaderPosition(mainDronePos, mainDroneRot);
+      
+      // Sync the drone position in the store for UI and other systems
+      const droneState = drone.getState();
+      if (droneState && droneState.position) {
+        dronePositions.set(id, droneState.position.clone());
+      }
+    });
+    
+    set({ state: { ...state } });
   },
 }));

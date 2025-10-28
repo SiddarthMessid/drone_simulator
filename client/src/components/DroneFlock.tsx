@@ -14,7 +14,7 @@ export default function DroneFlock() {
   const {
     state: { enabled, drones, dronePositions, droneColors },
     updateDronePosition,
-    updateFormationPositions,
+    updateMainDroneFormation,
   } = useMultiDrone();
 
   const droneRefs = useRef<Map<string, THREE.Group>>(new Map());
@@ -74,8 +74,8 @@ export default function DroneFlock() {
   useFrame((state, delta) => {
     const obstacleAABBs = getObstacleAABBs();
     
-    // Update formation positions for leader-follower behavior
-    updateFormationPositions();
+    // Update all fleet drones to follow the main drone continuously
+    updateMainDroneFormation();
 
     // Update each drone's physics
     drones.forEach((droneController, id) => {
