@@ -42,6 +42,7 @@ export class DroneController {
   private isLeader = false;
   private leaderPosition: THREE.Vector3 | null = null;
   private leaderRotation: THREE.Vector3 | null = null;
+  private altitudeTarget: number | null = null;
   private pidParams: PIDParams = {
     pitch: { kp: 1, ki: 0.1, kd: 0.2 },
     roll: { kp: 1, ki: 0.1, kd: 0.2 },
@@ -118,7 +119,9 @@ export class DroneController {
   }
 
   getSetpoints(): PIDSetpoints {
-    if (!this.isLeader && this.formationTarget) {
+    // If we have an altitude target or formation target, use formation setpoints
+    // (calculateFormationSetpoints handles both cases)
+    if (!this.isLeader && (this.formationTarget || this.altitudeTarget !== null)) {
       return this.calculateFormationSetpoints();
     }
     return this.isAutopilot ? this.calculateAutopilotSetpoints() : this.manualSetpoints;
@@ -147,12 +150,20 @@ export class DroneController {
 
   setHoverMode(enabled: boolean): void {
     if (enabled) {
-      // Set default hover throttle to keep drone in the air
-      this.manualSetpoints.throttle = 0.5;
+      // Set altitude target to current position if available
+      if (this.state && this.altitudeTarget === null) {
+        this.altitudeTarget = this.state.position.y;
+      }
       this.isAutopilot = false;
     } else {
       this.manualSetpoints.throttle = 0;
+      this.altitudeTarget = null;
     }
+  }
+
+  setAltitudeTarget(altitude: number): void {
+    this.altitudeTarget = Math.max(0, Math.min(this.config.maxAltitude, altitude));
+    console.log(`Altitude target set to ${this.altitudeTarget}`);
   }
 
   updateLeaderPosition(position: THREE.Vector3, rotation: THREE.Vector3): void {
@@ -163,7 +174,25 @@ export class DroneController {
   }
 
   private calculateFormationSetpoints(): PIDSetpoints {
+    // Default hover setpoints with altitude hold
     const setpoints: PIDSetpoints = { pitch: 0, roll: 0, yaw: 0, throttle: 0.5 };
+    
+    // If we have an explicit altitude target (from hover mode), maintain it
+    if (this.altitudeTarget !== null && this.state) {
+      const altitudeError = this.altitudeTarget - this.state.position.y;
+      const altitudeGain = 0.5;
+      const dampingGain = 0.3;
+      
+      // Proportional-Derivative control for smooth altitude hold
+      setpoints.throttle = Math.max(0, Math.min(1, 
+        0.5 + altitudeError * altitudeGain - this.state.velocity.y * dampingGain
+      ));
+      
+      // If no formation target, just hover in place
+      if (!this.formationTarget) {
+        return setpoints;
+      }
+    }
     
     if (this.formationTarget && this.leaderPosition && this.leaderRotation && this.state) {
       // Transform formation target to world space based on leader's position and rotation
@@ -172,6 +201,9 @@ export class DroneController {
       rotationMatrix.makeRotationY(this.leaderRotation.y);
       targetWorld.applyMatrix4(rotationMatrix);
       targetWorld.add(this.leaderPosition);
+
+      // Clamp target altitude to config limits
+      targetWorld.y = Math.max(0.5, Math.min(this.config.maxAltitude, targetWorld.y));
 
       // Calculate position error (distance vector to target)
       const positionError = new THREE.Vector3().subVectors(targetWorld, this.state.position);
@@ -188,10 +220,13 @@ export class DroneController {
         });
       }
       
-      // Calculate altitude control (throttle)
+      // Calculate altitude control (throttle) with damping
       const altitudeError = targetWorld.y - this.state.position.y;
       const altitudeGain = 0.5;
-      setpoints.throttle = Math.max(0, Math.min(1, 0.5 + altitudeError * altitudeGain));
+      const dampingGain = 0.3;
+      setpoints.throttle = Math.max(0, Math.min(1, 
+        0.5 + altitudeError * altitudeGain - this.state.velocity.y * dampingGain
+      ));
       
       // Only apply horizontal control if we're reasonably close in altitude
       if (distance > 0.5) {
@@ -277,6 +312,8 @@ export class DroneController {
 
       this.targets.position = target;
       this.isAutopilot = true;
+      // Clear altitude target to allow moveTo to control altitude
+      this.altitudeTarget = null;
       this.commandQueue.push(command);
       this.processCommandQueue();
     });
