@@ -66,7 +66,7 @@ export class DroneController {
   constructor(adapter: DroneAdapter, config: Partial<DroneControllerConfig> = {}) {
     this.adapter = adapter;
     this.config = { ...DEFAULT_CONFIG, ...config };
-    
+
     this.adapter.onStateUpdate(this.handleStateUpdate.bind(this));
   }
 
@@ -78,22 +78,22 @@ export class DroneController {
 
   private validateSafetyLimits(state: DroneState): void {
     const { maxTiltAngle, maxYawRate, maxVerticalSpeed } = this.config.safetyLimits;
-    
+
     // Check tilt angles
-    if (Math.abs(state.rotation.x) > maxTiltAngle || 
-        Math.abs(state.rotation.z) > maxTiltAngle) {
+    if (Math.abs(state.rotation.x) > maxTiltAngle ||
+      Math.abs(state.rotation.z) > maxTiltAngle) {
       console.error('Safety limit exceeded: Max tilt angle');
       this.emergencyStop();
       return;
     }
-    
+
     // Check yaw rate
     if (Math.abs(state.angularVelocity.y) > maxYawRate) {
       console.error('Safety limit exceeded: Max yaw rate');
       this.emergencyStop();
       return;
     }
-    
+
     // Check vertical speed
     if (Math.abs(state.velocity.y) > maxVerticalSpeed) {
       console.error('Safety limit exceeded: Max vertical speed');
@@ -105,10 +105,10 @@ export class DroneController {
   emergencyStop(): void {
     // Disable autopilot
     this.isAutopilot = false;
-    
+
     // Clear all targets
     this.targets = {};
-    
+
     // Send emergency stop command to adapter
     this.adapter.sendCommand({
       id: `emergency_${Date.now()}`,
@@ -116,8 +116,8 @@ export class DroneController {
       parameters: {},
       timeout: 1000,
       startTime: Date.now(),
-      resolve: () => {},
-      reject: () => {}
+      resolve: () => { },
+      reject: () => { }
     });
   }
 
@@ -256,9 +256,14 @@ export class DroneController {
 
     // Default hover setpoints with altitude hold
     const setpoints: PIDSetpoints = { pitch: 0, roll: 0, yaw: 0, throttle: 0.5 };
-    
+
+    // Safety check: ensure we have valid state
+    if (!this.state) {
+      return setpoints;
+    }
+
     // If we have an explicit altitude target (from hover mode), maintain it
-    if (this.altitudeTarget !== null && this.state) {
+    if (this.altitudeTarget !== null) {
       const altitudeError = this.altitudeTarget - this.state.position.y;
       // Compute desired vertical acceleration (m/s^2) using PD on altitude
       const kp_pos = 1.0; // m -> m/s^2
@@ -275,13 +280,13 @@ export class DroneController {
         return setpoints;
       }
     }
-    
+
     // If position-hold is enabled, override the formation target and use the captured hold position
-    if (this.positionHold && this.holdPosition && this.state) {
+    if (this.positionHold && this.holdPosition) {
       const targetWorld = this.holdPosition.clone();
 
       // Clamp target altitude to config limits
-      targetWorld.y = Math.max(0.5, Math.min(this.config.maxAltitude, targetWorld.y));
+      targetWorld.y = Math.max(1.0, Math.min(this.config.maxAltitude, targetWorld.y));
 
       // Calculate position error (distance vector to target)
       const positionError = new THREE.Vector3().subVectors(targetWorld, this.state.position);
@@ -317,9 +322,9 @@ export class DroneController {
           // Position -> desired velocity -> desired accel -> tilt (outer velocity loop)
           // Compute local frame errors
           const forwardError = positionError.z * Math.cos(this.state.rotation.y) +
-                               positionError.x * Math.sin(this.state.rotation.y);
+            positionError.x * Math.sin(this.state.rotation.y);
           const lateralError = -positionError.z * Math.sin(this.state.rotation.y) +
-                               positionError.x * Math.cos(this.state.rotation.y);
+            positionError.x * Math.cos(this.state.rotation.y);
 
           // Desired horizontal velocity (m/s) in local frame (P on position)
           const kp_pos_vel = 0.8; // position->velocity gain
@@ -337,9 +342,9 @@ export class DroneController {
 
           // Local current velocity
           const localVelocityForward = this.state.velocity.z * Math.cos(this.state.rotation.y) +
-                                       this.state.velocity.x * Math.sin(this.state.rotation.y);
+            this.state.velocity.x * Math.sin(this.state.rotation.y);
           const localVelocityLateral = -this.state.velocity.z * Math.sin(this.state.rotation.y) +
-                                       this.state.velocity.x * Math.cos(this.state.rotation.y);
+            this.state.velocity.x * Math.cos(this.state.rotation.y);
 
           // Desired acceleration (simple P on velocity error)
           const kv_vel = 1.6; // velocity->accel gain
@@ -374,24 +379,13 @@ export class DroneController {
       targetWorld.applyMatrix4(rotationMatrix);
       targetWorld.add(this.leaderPosition);
 
-      // Clamp target altitude to config limits
-      targetWorld.y = Math.max(0.5, Math.min(this.config.maxAltitude, targetWorld.y));
+      // Keep target altitude close to leader altitude (formation offsets are relative)
+      targetWorld.y = Math.max(0.5, Math.min(this.config.maxAltitude, this.leaderPosition.y));
 
       // Calculate position error (distance vector to target)
       const positionError = new THREE.Vector3().subVectors(targetWorld, this.state.position);
       const distance = positionError.length();
-      
-      // Debug logging (only log occasionally to avoid spam)
-      if (Math.random() < 0.01) {
-        console.log('Formation control:', {
-          formationOffset: this.formationTarget,
-          leaderPos: this.leaderPosition,
-          targetWorld: targetWorld,
-          currentPos: this.state.position,
-          distance: distance.toFixed(2)
-        });
-      }
-      
+
       // Calculate altitude control (throttle) by converting desired accel -> thrust
       const altitudeError = targetWorld.y - this.state.position.y;
       const kp_pos = 1.0;
@@ -400,13 +394,13 @@ export class DroneController {
       const maxThrust = this.thrustFactor * this.physicsMass * this.physicsGravity;
       const requiredThrust = this.physicsMass * (a_des + this.physicsGravity);
       setpoints.throttle = Math.max(0, Math.min(1, requiredThrust / maxThrust));
-      
+
       // Only apply horizontal control if we have a valid distance
       if (distance > 0.01) {
         // Normalize the horizontal error
         const horizontalError = new THREE.Vector2(positionError.x, positionError.z);
         const horizontalDistance = horizontalError.length();
-        
+
         if (horizontalDistance > 0.05) {
           // Calculate desired yaw to face the target (dx, dz)
           const targetYaw = Math.atan2(positionError.x, positionError.z);
@@ -422,9 +416,9 @@ export class DroneController {
           // Position -> desired velocity -> desired accel -> tilt (outer velocity loop)
           // Compute local frame errors
           const forwardError = positionError.z * Math.cos(this.state.rotation.y) +
-                               positionError.x * Math.sin(this.state.rotation.y);
+            positionError.x * Math.sin(this.state.rotation.y);
           const lateralError = -positionError.z * Math.sin(this.state.rotation.y) +
-                               positionError.x * Math.cos(this.state.rotation.y);
+            positionError.x * Math.cos(this.state.rotation.y);
 
           // Desired horizontal velocity (m/s) in local frame (P on position)
           const kp_pos_vel = 0.8; // position->velocity gain
@@ -442,9 +436,9 @@ export class DroneController {
 
           // Local current velocity
           const localVelocityForward = this.state.velocity.z * Math.cos(this.state.rotation.y) +
-                                       this.state.velocity.x * Math.sin(this.state.rotation.y);
+            this.state.velocity.x * Math.sin(this.state.rotation.y);
           const localVelocityLateral = -this.state.velocity.z * Math.sin(this.state.rotation.y) +
-                                       this.state.velocity.x * Math.cos(this.state.rotation.y);
+            this.state.velocity.x * Math.cos(this.state.rotation.y);
 
           // Desired acceleration (simple P on velocity error)
           const kv_vel = 1.6; // velocity->accel gain

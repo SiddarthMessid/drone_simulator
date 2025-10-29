@@ -26,7 +26,7 @@ export class DronePhysics {
   private mass: number; // kg
   private inertia: THREE.Vector3 = new THREE.Vector3(0.03, 0.03, 0.05); // kg⋅m²
   private drag: number = 0.1;
-  private angularDrag: number = 0.5;
+  private angularDrag: number = 5.0; // Moderate drag - active damping handles stopping
   private gravity: number;
   private maxTilt: number = Math.PI / 3; // 60 degrees max tilt
   // Physical thrust model (configurable)
@@ -79,12 +79,25 @@ export class DronePhysics {
     newState.angularVelocity.z += (torques.z / this.inertia.z) * dt;
 
     // Apply angular drag
-    newState.angularVelocity.multiplyScalar(1 - this.angularDrag * dt);
+    const dragFactor = Math.max(0, 1 - this.angularDrag * dt);
+    newState.angularVelocity.x *= dragFactor;
+    newState.angularVelocity.y *= dragFactor * 1.5; // Moderate extra damping for yaw
+    newState.angularVelocity.z *= dragFactor;
+
+    // Hard limit on yaw angular velocity to prevent runaway
+    const maxYawRate = 2.0; // rad/s
+    if (Math.abs(newState.angularVelocity.y) > maxYawRate) {
+      newState.angularVelocity.y = Math.sign(newState.angularVelocity.y) * maxYawRate;
+    }
 
     // Update rotation
     newState.rotation.x += newState.angularVelocity.x * dt;
     newState.rotation.y += newState.angularVelocity.y * dt;
     newState.rotation.z += newState.angularVelocity.z * dt;
+
+    // Normalize yaw angle to -PI to PI range to prevent accumulation
+    while (newState.rotation.y > Math.PI) newState.rotation.y -= 2 * Math.PI;
+    while (newState.rotation.y < -Math.PI) newState.rotation.y += 2 * Math.PI;
 
     // Limit rotation angles
     newState.rotation.x = Math.max(-this.maxTilt, Math.min(this.maxTilt, newState.rotation.x));

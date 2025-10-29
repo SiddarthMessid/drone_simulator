@@ -13,8 +13,8 @@ import RetractableWindControls from "./components/RetractableWindControls";
 import ErrorBoundary from "./components/ErrorBoundary";
 import WebGLFallback from "./components/WebGLFallback";
 import CameraControls from "./components/CameraControls";
-import DroneFlock from "./components/DroneFlock";
-import MultiDroneController from "./components/MultiDroneController";
+import DroneFlockSimple from "./components/DroneFlock.simple";
+import MultiDroneControllerSimple from "./components/MultiDroneController.simple";
 import MissionPlanner from "./components/MissionPlanner";
 import { Button } from "./components/ui/button";
 import {
@@ -319,7 +319,7 @@ function App() {
                 >
                   <Suspense fallback={null}>
                     <DroneSimulation />
-                    <DroneFlock />
+                    <DroneFlockSimple />
                     <ImportedModels />
                   </Suspense>
                 </Canvas>
@@ -605,7 +605,7 @@ function App() {
             width={400}
             height={550}
           >
-            <MultiDroneController />
+            <MultiDroneControllerSimple />
           </DraggableWindow>
 
           <DraggableWindow

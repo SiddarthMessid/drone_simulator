@@ -7,8 +7,8 @@ import { DEFAULT_PHYSICS_CONFIG } from './physicsConfig';
 const DEFAULT_CONFIG: DroneControllerConfig = {
   maxSpeed: 5.0,
   maxAltitude: 50.0,
-  positionTolerance: 0.5,
-  altitudeTolerance: 0.3,
+  positionTolerance: 2.0, // Increased from 0.5 to prevent micro-corrections
+  altitudeTolerance: 0.5, // Increased from 0.3
   angleTolerance: 0.05,
   commandTimeout: 30000, // 30 seconds default timeout
   safetyLimits: {
@@ -45,11 +45,11 @@ export class DroneController {
   private holdThrottleExpire: number | null = null;
   // Track previous manual-active state to detect transitions into hold
   private lastManualActive: boolean = false;
-  
+
   constructor(adapter: DroneAdapter, config: Partial<DroneControllerConfig> = {}) {
     this.adapter = adapter;
     this.config = { ...DEFAULT_CONFIG, ...config };
-    
+
     this.adapter.onStateUpdate(this.handleStateUpdate.bind(this));
   }
 
@@ -69,22 +69,22 @@ export class DroneController {
 
   private validateSafetyLimits(state: DroneState): void {
     const { maxTiltAngle, maxYawRate, maxVerticalSpeed } = this.config.safetyLimits;
-    
+
     // Check tilt angles
-    if (Math.abs(state.rotation.x) > maxTiltAngle || 
-        Math.abs(state.rotation.z) > maxTiltAngle) {
+    if (Math.abs(state.rotation.x) > maxTiltAngle ||
+      Math.abs(state.rotation.z) > maxTiltAngle) {
       console.error('Safety limit exceeded: Max tilt angle');
       this.emergencyStop();
       return;
     }
-    
+
     // Check yaw rate
     if (Math.abs(state.angularVelocity.y) > maxYawRate) {
       console.error('Safety limit exceeded: Max yaw rate');
       this.emergencyStop();
       return;
     }
-    
+
     // Check vertical speed
     if (Math.abs(state.velocity.y) > maxVerticalSpeed) {
       console.error('Safety limit exceeded: Max vertical speed');
@@ -100,7 +100,7 @@ export class DroneController {
     return new Promise((resolve, reject) => {
       this.cancelCurrentCommand();
       this.isAutopilot = true;
-      
+
       const command: DroneCommand = {
         id: `takeoff_${Date.now()}`,
         type: 'takeoff',
@@ -110,7 +110,7 @@ export class DroneController {
         startTime: Date.now(),
         timeout: 15000 // 15 second timeout
       };
-      
+
       this.targets = { altitude: targetAltitude };
       this.executeCommand(command);
     });
@@ -123,7 +123,7 @@ export class DroneController {
     return new Promise((resolve, reject) => {
       this.cancelCurrentCommand();
       this.isAutopilot = true;
-      
+
       const command: DroneCommand = {
         id: `land_${Date.now()}`,
         type: 'land',
@@ -133,7 +133,7 @@ export class DroneController {
         startTime: Date.now(),
         timeout: 20000 // 20 second timeout
       };
-      
+
       this.targets = { altitude: 0.5 };
       this.executeCommand(command);
     });
@@ -146,9 +146,9 @@ export class DroneController {
     return new Promise((resolve, reject) => {
       this.cancelCurrentCommand();
       this.isAutopilot = true;
-      
+
       const droneStore = useDrone.getState();
-      
+
       const command: DroneCommand = {
         id: `hover_${Date.now()}`,
         type: 'hover',
@@ -158,13 +158,13 @@ export class DroneController {
         startTime: Date.now(),
         timeout: 1500 // 1.5 second timeout to allow for completion
       };
-      
+
       this.targets = {
         position: droneStore.position.clone(),
         altitude: droneStore.position.y,
         heading: droneStore.rotation.y
       };
-      
+
       this.executeCommand(command);
     });
   }
@@ -175,10 +175,10 @@ export class DroneController {
   async setPitch(degrees: number): Promise<void> {
     return new Promise((resolve, reject) => {
       const radians = (degrees * Math.PI) / 180;
-      
+
       this.cancelCurrentCommand();
       this.isAutopilot = true;
-      
+
       const command: DroneCommand = {
         id: `setPitch_${Date.now()}`,
         type: 'setPitch',
@@ -188,7 +188,7 @@ export class DroneController {
         startTime: Date.now(),
         timeout: 5000
       };
-      
+
       this.targets.pitch = radians;
       this.executeCommand(command);
     });
@@ -200,10 +200,10 @@ export class DroneController {
   async setRoll(degrees: number): Promise<void> {
     return new Promise((resolve, reject) => {
       const radians = (degrees * Math.PI) / 180;
-      
+
       this.cancelCurrentCommand();
       this.isAutopilot = true;
-      
+
       const command: DroneCommand = {
         id: `setRoll_${Date.now()}`,
         type: 'setRoll',
@@ -213,7 +213,7 @@ export class DroneController {
         startTime: Date.now(),
         timeout: 5000
       };
-      
+
       this.targets.roll = radians;
       this.executeCommand(command);
     });
@@ -225,10 +225,10 @@ export class DroneController {
   async setYaw(degrees: number): Promise<void> {
     return new Promise((resolve, reject) => {
       const radians = (degrees * Math.PI) / 180;
-      
+
       this.cancelCurrentCommand();
       this.isAutopilot = true;
-      
+
       const command: DroneCommand = {
         id: `setYaw_${Date.now()}`,
         type: 'setYaw',
@@ -238,7 +238,7 @@ export class DroneController {
         startTime: Date.now(),
         timeout: 5000
       };
-      
+
       this.targets.heading = radians;
       this.executeCommand(command);
     });
@@ -250,10 +250,10 @@ export class DroneController {
   async setThrottle(percentage: number): Promise<void> {
     return new Promise((resolve, reject) => {
       const throttle = Math.max(-1, Math.min(1, percentage / 100));
-      
+
       this.cancelCurrentCommand();
       this.isAutopilot = true;
-      
+
       const command: DroneCommand = {
         id: `setThrottle_${Date.now()}`,
         type: 'setThrottle',
@@ -263,7 +263,7 @@ export class DroneController {
         startTime: Date.now(),
         timeout: 1000
       };
-      
+
       // Add throttle target to maintain the throttle level
       this.targets.throttle = throttle;
       this.executeCommand(command);
@@ -286,7 +286,7 @@ export class DroneController {
     return new Promise((resolve, reject) => {
       this.cancelCurrentCommand();
       this.isAutopilot = true;
-      
+
       const command: DroneCommand = {
         id: `moveTo_${Date.now()}`,
         type: 'moveTo',
@@ -296,12 +296,12 @@ export class DroneController {
         startTime: Date.now(),
         timeout: options.timeout || 30000 // 30 second default timeout
       };
-      
+
       this.targets = {
         position: targetPosition.clone(),
         altitude: targetPosition.y
       };
-      
+
       this.executeCommand(command);
     });
   }
@@ -347,46 +347,85 @@ export class DroneController {
   update(manualControls: PIDSetpoints, deltaTime: number): PIDSetpoints {
     // Store manual controls for fallback
     this.manualSetpoints = manualControls;
-    
+
     // Check command timeout
     this.checkCommandTimeout();
+
     // Special handling: global main-drone position-hold from store
     const droneStore = useDrone.getState();
-    if (droneStore.positionHoldEnabled) {
-      // Throttle-only override: when hold is enabled, only throttle > deadzone
-      // lets the pilot fly manually. This ensures that when the pilot releases
-      // throttle the drone captures and holds its current world position.
-      const deadzone = 0.05;
-      const manualActive = Math.abs(manualControls.throttle) > deadzone;
 
-      if (manualActive) {
-        // Pilot is commanding vertical motion: allow manual controls.
+    // If position hold is disabled, clear all targets and use manual controls
+    if (!droneStore.positionHoldEnabled) {
+      this.targets.position = undefined;
+      this.targets.altitude = undefined;
+      this.targets.throttle = undefined;
+      this.targets.heading = undefined;
+      this.isAutopilot = false;
+      return manualControls;
+    }
+
+    // Position hold is enabled - check for manual input
+    if (droneStore.positionHoldEnabled) {
+      // Check if pilot is giving any manual input
+      const deadzone = 0.05;
+      const hasThrottleInput = Math.abs(manualControls.throttle) > deadzone;
+      const hasPitchInput = Math.abs(manualControls.pitch) > deadzone;
+      const hasRollInput = Math.abs(manualControls.roll) > deadzone;
+
+      // For yaw, check if target yaw is changing
+      const yawDifference = Math.abs(manualControls.yaw - droneStore.rotation.y);
+      const hasYawInput = yawDifference > 0.05 && yawDifference < Math.PI;
+
+      // Pitch/Roll/Throttle disable position AND altitude hold (full manual)
+      const hasPositionInput = hasThrottleInput || hasPitchInput || hasRollInput;
+
+      // Yaw only disables heading hold (can yaw in place while holding position/altitude)
+      const hasYawOnlyInput = hasYawInput && !hasPositionInput;
+
+      if (hasPositionInput) {
+        // Full manual control - disable everything and clear store position
         this.targets.position = undefined;
+        this.targets.altitude = undefined;
+        this.targets.throttle = undefined;
+        this.targets.heading = undefined;
         this.isAutopilot = false;
         this.lastManualActive = true;
+
+        // IMPORTANT: Clear the stored hold position (but keep feature enabled)
+        // This forces a fresh capture when controls are released
+        const droneState = useDrone.getState();
+        droneState.holdPosition = null;
+
         return manualControls;
+      } else if (hasYawOnlyInput) {
+        // Yaw only - keep position and altitude hold, just update heading
+        this.isAutopilot = true;
+        this.targets.heading = manualControls.yaw; // Update heading target
+        this.lastManualActive = false;
+        // Fall through to autopilot (will hold position/altitude, use new heading)
       } else {
-        // Throttle released: engage autopilot hold.
+        // No input - full autopilot hold
         this.isAutopilot = true;
 
-        // If we just transitioned from manual -> hold, recapture current position
-        // so the hold point is the place where throttle was released.
+        // If we just transitioned from manual -> hold, recapture everything
         if (this.lastManualActive || !droneStore.holdPosition) {
           useDrone.getState().enablePositionHold(true);
-          // Give a small hover throttle buffer while autopilot takes over.
-          const hoverThrottle = 1 / Math.max(0.0001, DEFAULT_PHYSICS_CONFIG.thrustFactor);
-          this.targets.throttle = hoverThrottle;
-          this.holdThrottleExpire = Date.now() + 500; // ms
+          this.targets.throttle = 0.4;
+          this.holdThrottleExpire = Date.now() + 500;
+          this.targets.heading = droneStore.rotation.y;
         }
 
-        // Update local target to match store (captured above)
+        // Update targets from store
         if (droneStore.holdPosition) {
           this.targets.position = droneStore.holdPosition.clone();
           this.targets.altitude = droneStore.holdPosition.y;
+          if (this.targets.heading === undefined) {
+            this.targets.heading = droneStore.rotation.y;
+          }
         }
 
         this.lastManualActive = false;
-        // fall through to autopilot setpoint generation
+        // Fall through to autopilot setpoint generation
       }
     }
 
@@ -397,10 +436,10 @@ export class DroneController {
 
     // Generate autopilot setpoints based on targets when in autopilot mode
     const setpoints = this.calculateAutopilotSetpoints();
-    
+
     // Check if command is complete
     this.checkCommandCompletion();
-    
+
     return setpoints;
   }
 
@@ -411,7 +450,7 @@ export class DroneController {
   private calculateAutopilotSetpoints(): PIDSetpoints {
     const droneStore = useDrone.getState();
     const setpoints: PIDSetpoints = { pitch: 0, roll: 0, yaw: 0, throttle: 0 };
-    
+
     // Expire any short-lived hold throttle
     if (this.holdThrottleExpire && Date.now() > this.holdThrottleExpire) {
       this.targets.throttle = undefined;
@@ -425,93 +464,128 @@ export class DroneController {
     // Altitude control (when no direct throttle is set)
     else if (this.targets.altitude !== undefined) {
       const altitudeError = this.targets.altitude - droneStore.position.y;
-      setpoints.throttle = Math.max(-1, Math.min(1, altitudeError * 2));
+      const verticalVelocity = droneStore.velocity.y;
+
+      // Proportional-Derivative control for smooth altitude hold
+      const kp_altitude = 0.2; // Reduced for smoother response
+      const kd_altitude = 0.4; // Reduced to prevent over-damping
+
+      const throttleCorrection = (kp_altitude * altitudeError) - (kd_altitude * verticalVelocity);
+
+      // Hover throttle baseline - calibrated to 40% for this drone
+      const hoverThrottle = 0.4;
+      setpoints.throttle = Math.max(0, Math.min(1, hoverThrottle + throttleCorrection));
     }
-    
+
     // Position control
     if (this.targets.position) {
       const positionError = this.targets.position.clone().sub(droneStore.position);
       const distance = positionError.length();
-      
+
       if (distance > this.config.positionTolerance) {
         // Calculate desired pitch and roll based on position error
-        const maxTilt = 0.3; // 17 degrees
-        setpoints.pitch = Math.max(-maxTilt, Math.min(maxTilt, -positionError.z * 0.5));
-        setpoints.roll = Math.max(-maxTilt, Math.min(maxTilt, positionError.x * 0.5));
+        // Use gentler gains for smooth position hold
+        const kp_position = 0.15;
+        const maxTilt = 0.2; // 11 degrees max
+
+        // Add velocity damping for smoother control
+        const kd_position = 0.1;
+        const velocityDamping = new THREE.Vector3(
+          -droneStore.velocity.x * kd_position,
+          0,
+          -droneStore.velocity.z * kd_position
+        );
+
+        const pitchCorrection = (-positionError.z * kp_position) + velocityDamping.z;
+        const rollCorrection = (positionError.x * kp_position) + velocityDamping.x;
+
+        setpoints.pitch = Math.max(-maxTilt, Math.min(maxTilt, pitchCorrection));
+        setpoints.roll = Math.max(-maxTilt, Math.min(maxTilt, rollCorrection));
+      } else {
+        // Within tolerance - explicitly set to 0 to prevent drift
+        setpoints.pitch = 0;
+        setpoints.roll = 0;
       }
+    } else {
+      // No position target - ensure pitch/roll are 0
+      setpoints.pitch = 0;
+      setpoints.roll = 0;
     }
-    
-    // Heading control
+
+    // Heading control (with angle wrapping)
     if (this.targets.heading !== undefined) {
-      const headingError = this.targets.heading - droneStore.rotation.y;
-      setpoints.yaw = Math.max(-1, Math.min(1, headingError * 2));
+      let headingError = this.targets.heading - droneStore.rotation.y;
+      // Normalize angle difference to -PI to PI (shortest path)
+      while (headingError > Math.PI) headingError -= 2 * Math.PI;
+      while (headingError < -Math.PI) headingError += 2 * Math.PI;
+      setpoints.yaw = this.targets.heading; // Use target angle directly, PID will handle it
     }
-    
+
     // Direct angle control (takes priority over position-based control)
     if (this.targets.pitch !== undefined) {
       setpoints.pitch = this.targets.pitch;
     }
-    
+
     if (this.targets.roll !== undefined) {
       setpoints.roll = this.targets.roll;
     }
-    
+
     return setpoints;
   }
 
   private checkCommandCompletion(): void {
     if (!this.currentCommand) return;
-    
+
     const droneStore = useDrone.getState();
     let isComplete = false;
-    
+
     switch (this.currentCommand.type) {
       case 'takeoff':
       case 'land':
-        const targetAlt = this.currentCommand.type === 'takeoff' 
-          ? this.currentCommand.parameters.targetAltitude 
+        const targetAlt = this.currentCommand.type === 'takeoff'
+          ? this.currentCommand.parameters.targetAltitude
           : 0.5;
         isComplete = Math.abs(droneStore.position.y - targetAlt) < this.config.altitudeTolerance;
         break;
-        
+
       case 'hover':
         // Consider hovering complete after stabilization time
         isComplete = Date.now() - this.currentCommand.startTime > 1000;
         break;
-        
+
       case 'moveTo':
         if (this.targets.position) {
           const distance = droneStore.position.distanceTo(this.targets.position);
           isComplete = distance < this.config.positionTolerance;
         }
         break;
-        
+
       case 'setPitch':
         // Check if pitch target is achieved and maintained
         isComplete = Math.abs(droneStore.rotation.x - (this.targets.pitch || 0)) < this.config.angleTolerance;
         break;
-        
+
       case 'setRoll':
         // Check if roll target is achieved and maintained  
         isComplete = Math.abs(droneStore.rotation.z - (this.targets.roll || 0)) < this.config.angleTolerance;
         break;
-        
+
       case 'setYaw':
         // Check if yaw target is achieved and maintained
         isComplete = Math.abs(droneStore.rotation.y - (this.targets.heading || 0)) < this.config.angleTolerance;
         break;
-        
+
       case 'setThrottle':
         // Throttle commands resolve immediately after setting the target
         isComplete = true;
         break;
     }
-    
+
     if (isComplete) {
       const commandType = this.currentCommand.type;
       this.currentCommand.resolve();
       this.currentCommand = null;
-      
+
       // Only return to hover mode for movement commands, not for persistent commands
       if (this.isAutopilot && (commandType === 'moveTo' || commandType === 'takeoff' || commandType === 'land')) {
         this.targets = {
@@ -526,7 +600,7 @@ export class DroneController {
 
   private checkCommandTimeout(): void {
     if (!this.currentCommand) return;
-    
+
     const elapsed = Date.now() - this.currentCommand.startTime;
     if (this.currentCommand.timeout && elapsed > this.currentCommand.timeout) {
       this.currentCommand.reject(new Error(`Command ${this.currentCommand.type} timed out after ${elapsed}ms`));
@@ -538,19 +612,19 @@ export class DroneController {
   emergencyStop(): void {
     // Clear all pending commands
     this.commandQueue = [];
-    
+
     // Cancel current command if any
     if (this.currentCommand) {
       this.currentCommand.reject(new Error('Emergency stop initiated'));
       this.currentCommand = null;
     }
-    
+
     // Disable autopilot
     this.isAutopilot = false;
-    
+
     // Clear all targets
     this.targets = {};
-    
+
     // Send emergency stop command to adapter
     this.adapter.sendCommand({
       id: `emergency_${Date.now()}`,
@@ -558,8 +632,8 @@ export class DroneController {
       parameters: {},
       timeout: 1000,
       startTime: Date.now(),
-      resolve: () => {},
-      reject: () => {}
+      resolve: () => { },
+      reject: () => { }
     });
   }
 }

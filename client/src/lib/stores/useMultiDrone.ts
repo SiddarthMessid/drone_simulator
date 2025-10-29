@@ -120,9 +120,6 @@ export const useMultiDrone = create<{
 
     // Get main drone position as reference for spawning
     const mainDronePos = useDrone.getState().position;
-    // Insert controller into store first so generation and assignment
-    // of formation offsets can consider the new drone in count/order.
-    state.drones.set(id, controller);
 
     // Determine leader position and whether there is an in-fleet leader.
     const activeId = state.activeDroneId;
@@ -139,55 +136,68 @@ export const useMultiDrone = create<{
       leaderPos = mainDronePos.clone();
     }
 
-    // Compute formation offsets for current follower count and assign them.
+    // Compute formation offsets for current follower count (including the new drone)
     const spacing = 5;
     // If leader is inside fleet we exclude it from follower count;
     // otherwise all drones in the map are treated as followers of the global main drone.
-    const followerCount = state.drones.size - (leaderInFleet ? 1 : 0);
+    const followerCount = state.drones.size + 1 - (leaderInFleet ? 1 : 0);
     const offsets = generateFormationOffsets('triangle', Math.max(0, followerCount), spacing);
 
+    // Calculate the spawn position for the new drone (in world space)
+    const newDroneOffset = offsets[followerCount - 1] || new THREE.Vector3(0, 0, -followerCount * spacing);
+
+    // Transform offset to world space based on leader rotation
+    const rotationMatrix = new THREE.Matrix4();
+    rotationMatrix.makeRotationY(leaderRot.y);
+    const worldOffset = newDroneOffset.clone();
+    worldOffset.applyMatrix4(rotationMatrix);
+
+    // Calculate spawn position (leader position + world offset)
+    const spawnPosition = leaderPos.clone().add(worldOffset);
+
+    // Ensure spawn altitude is reasonable (at least 5m above ground)
+    spawnPosition.y = Math.max(5, leaderPos.y);
+
+    // Initialize the new drone at the spawn position
+    const initialState = {
+      position: spawnPosition.clone(),
+      rotation: new THREE.Vector3(0, leaderRot.y, 0), // Match leader's yaw
+      velocity: new THREE.Vector3(0, 0, 0),
+      angularVelocity: new THREE.Vector3(0, 0, 0)
+    };
+
+    // Set up the controller with initial state
+    controller.updateState(initialState);
+    controller.setFormationTarget(newDroneOffset);
+    controller.setAsLeader(false);
+    controller.updateLeaderPosition(leaderPos, leaderRot);
+
+    // Add to store
+    state.drones.set(id, controller);
+    state.dronePositions.set(id, spawnPosition.clone());
+    state.droneColors.set(id, DEFAULT_COLORS[(state.droneColors.size) % DEFAULT_COLORS.length]);
+
+    console.log(`Added drone ${id} at position:`, spawnPosition, 'with formation offset:', newDroneOffset);
+
+    // Reassign formation offsets to all existing drones
     let posIndex = 0;
-    let assignedPosition = mainDronePos.clone();
     state.drones.forEach((drone, curId) => {
       if (leaderInFleet && curId === activeId) {
         // This is the leader inside the fleet
         drone.setAsLeader(true);
-        // Keep leader state as-is
         return;
       }
 
-      // Assign formation offset if available
+      // Assign formation offset
       const offset = posIndex < offsets.length ? offsets[posIndex++] : new THREE.Vector3(0, 0, -(posIndex + 1) * spacing);
       drone.setFormationTarget(offset);
       drone.setAsLeader(false);
-
-      // Update leader position for the follower so it can compute its setpoints
-      const leaderState = { rotation: leaderRot } as any;
       drone.updateLeaderPosition(leaderPos, leaderRot);
-
-      // If this is the newly added drone, initialize its physical state at the
-      // leader position plus the assigned formation offset to avoid large transients.
-      if (curId === id) {
-        assignedPosition = leaderPos.clone().add(offset);
-        const initialState = {
-          position: assignedPosition.clone(),
-          rotation: new THREE.Vector3(0, 0, 0),
-          velocity: new THREE.Vector3(0, 0, 0),
-          angularVelocity: new THREE.Vector3(0, 0, 0)
-        };
-        controller.updateState(initialState);
-        // Do NOT set a fixed altitude target for followers; they should follow the leader
-        // controller.setAltitudeTarget(assignedPosition.y);
-      }
 
       // Sync the drone position in the store for UI and other systems
       const droneState = drone.getState();
       if (droneState && droneState.position) {
         state.dronePositions.set(curId, droneState.position.clone());
-      }
-      // Assign a color if missing
-      if (!state.droneColors.has(curId)) {
-        state.droneColors.set(curId, DEFAULT_COLORS[(state.droneColors.size) % DEFAULT_COLORS.length]);
       }
     });
 
@@ -206,7 +216,7 @@ export const useMultiDrone = create<{
   autoAssignFormation: () => {
     const { state } = get();
     const { drones } = state;
-    
+
     // Default to auto-chosen formation (V for now) based on drone count
     const spacing = 5;
     const followerCount = drones.size;
@@ -237,7 +247,7 @@ export const useMultiDrone = create<{
     state.droneColors.delete(id);
 
     if (state.activeDroneId === id) {
-      state.activeDroneId = state.drones.size > 0 ? 
+      state.activeDroneId = state.drones.size > 0 ?
         Array.from(state.drones.keys())[0] : null;
     }
 
@@ -270,7 +280,7 @@ export const useMultiDrone = create<{
   swarmBehavior: async (behavior: 'follow' | 'scatter' | 'gather') => {
     const { state } = get();
     const { drones, activeDroneId, dronePositions } = state;
-    
+
     if (drones.size < 2) {
       console.log('Swarm behavior requires at least 2 drones');
       return;
@@ -286,7 +296,7 @@ export const useMultiDrone = create<{
           console.log('No active drone set as leader');
           return;
         }
-        
+
         const leaderPos = dronePositions.get(activeDroneId);
         if (!leaderPos) {
           console.error('Leader position not found');
@@ -302,7 +312,7 @@ export const useMultiDrone = create<{
         // Set up follow positions behind the leader
         const followSpacing = 5;
         let followerIndex = 0;
-        
+
         drones.forEach((drone, id) => {
           if (id !== activeDroneId) {
             drone.setAsLeader(false);
@@ -378,7 +388,7 @@ export const useMultiDrone = create<{
 
     const leaderState = leader.getState();
     console.log(`Activating ${formation} formation with ${drones.size} drones, leader at:`, leaderPos);
-    
+
     const spacing = 5; // Distance between drones - increased for better visibility
     const followerCount = drones.size - 1;
     const relativeOffsets = generateFormationOffsets(formation, followerCount, spacing);
@@ -406,12 +416,12 @@ export const useMultiDrone = create<{
   updateFormationPositions: () => {
     const { state } = get();
     const { drones, activeDroneId, dronePositions } = state;
-    
+
     if (!activeDroneId) return;
-    
+
     const leaderPos = dronePositions.get(activeDroneId);
     const leader = drones.get(activeDroneId);
-    
+
     if (leaderPos && leader) {
       const leaderState = leader.getState();
       drones.forEach((drone, id) => {
@@ -425,9 +435,9 @@ export const useMultiDrone = create<{
   updateMainDroneFormation: () => {
     const { state } = get();
     const { drones, dronePositions } = state;
-    
+
     if (drones.size === 0) return;
-    
+
     // Get main drone position and rotation from the global drone store
     // Prefer the active drone in the fleet as the leader if available
     const activeId = state.activeDroneId;
@@ -461,7 +471,7 @@ export const useMultiDrone = create<{
         dronePositions.set(id, droneState.position.clone());
       }
     });
-    
+
     set({ state: { ...state } });
   },
 }));

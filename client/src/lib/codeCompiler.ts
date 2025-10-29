@@ -14,7 +14,7 @@ export function compileCode(code: string, telemetry?: any): CompilationResult {
 
     // Detect if this is drone command code or PID configuration
     const isDroneCommands = detectDroneCommands(code);
-    
+
     if (isDroneCommands) {
       console.log("Detected drone commands - executing JavaScript");
       return compileDroneCommands(code);
@@ -38,7 +38,7 @@ function detectDroneCommands(code: string): boolean {
     'drone.moveTo', 'drone.dir', 'drone.enableManualControl',
     'await ', 'async ', 'Promise', '.then('
   ];
-  
+
   return droneKeywords.some(keyword => code.includes(keyword));
 }
 
@@ -53,8 +53,8 @@ function compileDroneCommands(code: string): CompilationResult {
     }
 
     // Create a safe execution function
-    const wrappedCode = code.includes('async function') || code.includes('async ') 
-      ? code 
+    const wrappedCode = code.includes('async function') || code.includes('async ')
+      ? code
       : `async function executeDroneCommands() {
   ${code}
 }
@@ -66,13 +66,37 @@ executeDroneCommands();`;
         "use strict";
         ${wrappedCode}
       `);
-      
+
       // Execute with global drone instance, console, and THREE
       if (typeof window !== 'undefined' && (window as any).drone) {
         const THREE = (window as any).THREE;
+
+        // Stop any running mission and enable position hold
+        const useDrone = (window as any).useDrone;
+        const useMission = (window as any).useMission;
+
+        if (useMission) {
+          const missionStore = useMission.getState();
+          if (missionStore.isExecuting) {
+            console.log("Stopping running mission...");
+            missionStore.setIsExecuting(false);
+          }
+        }
+
+        if (useDrone) {
+          const droneStore = useDrone.getState();
+          // Only enable position hold if not already enabled
+          // User can manually toggle it via the Control Panel
+          if (!droneStore.positionHoldEnabled) {
+            console.log("⚠️ Position Hold is disabled. Enabling it for autopilot commands...");
+            console.log("💡 You can toggle Position Hold manually in the Control Panel");
+            droneStore.enablePositionHold(true);
+          }
+        }
+
         executeFunction((window as any).drone, console, THREE);
         console.log("✅ Drone commands executed successfully");
-        
+
         return {
           success: true,
           mode: 'drone' as const,
@@ -118,14 +142,14 @@ throttle = ${telemetry.throttle || 0}
 
   // Create a safe execution environment that mimics Python
   const compilationResult = executePythonLikeCode(processedCode);
-  
+
   if (!compilationResult.success) {
     return compilationResult;
   }
 
   // Parse the PID parameters from the executed result
   const pidParams = parsePIDParameters(processedCode);
-  
+
   if (!pidParams) {
     return {
       success: false,
@@ -178,7 +202,7 @@ function executePythonLikeCode(code: string): CompilationResult {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       const trimmedLine = line.trim();
-      
+
       // Skip empty lines and comments
       if (!trimmedLine || trimmedLine.startsWith('#')) continue;
 
@@ -197,7 +221,7 @@ function executePythonLikeCode(code: string): CompilationResult {
           continue;
         }
       }
-      
+
       // Skip content inside docstrings
       if (inDocstring) continue;
 
@@ -221,11 +245,11 @@ function executePythonLikeCode(code: string): CompilationResult {
       // Check indentation in function
       if (inFunction && trimmedLine) {
         const hasIndentation = line.startsWith('    ') || line.startsWith('\t');
-        
+
         // Allow certain constructs without strict indentation checking
         const isReturnStatement = trimmedLine.startsWith('return');
         const isDocstring = trimmedLine.startsWith('"""') || trimmedLine.startsWith("'''");
-        
+
         if (!hasIndentation && !isReturnStatement && !isDocstring) {
           // More flexible indentation check - just warn about common patterns
           if (trimmedLine.length > 0) {
@@ -238,11 +262,11 @@ function executePythonLikeCode(code: string): CompilationResult {
       if (line.includes('return {')) {
         const openBraces = (line.match(/\{/g) || []).length;
         const closeBraces = (line.match(/\}/g) || []).length;
-        
+
         let j = i;
         let totalOpen = openBraces;
         let totalClose = closeBraces;
-        
+
         // Check subsequent lines for closing braces if needed
         while (totalOpen > totalClose && j < lines.length - 1) {
           j++;
@@ -250,7 +274,7 @@ function executePythonLikeCode(code: string): CompilationResult {
           totalOpen += (nextLine.match(/\{/g) || []).length;
           totalClose += (nextLine.match(/\}/g) || []).length;
         }
-        
+
         if (totalOpen !== totalClose) {
           return {
             success: false,
@@ -299,14 +323,14 @@ function parsePIDParameters(code: string): PIDParams | null {
       // Look for the pattern within the specific axis block
       const axisPattern = new RegExp(`'${axis}'\\s*:\\s*\\{([^}]+)\\}`, 'i');
       const axisMatch = code.match(axisPattern);
-      
+
       if (axisMatch) {
         const axisContent = axisMatch[1];
         const paramPattern = new RegExp(`'${param}'\\s*:\\s*([0-9]*\\.?[0-9]+)`, 'i');
         const paramMatch = axisContent.match(paramPattern);
         return paramMatch ? parseFloat(paramMatch[1]) : 1.0; // Default to 1.0 instead of 0
       }
-      
+
       // Fallback: search entire code
       const globalPattern = new RegExp(`'${param}'\\s*:\\s*([0-9]*\\.?[0-9]+)`, 'i');
       const globalMatch = code.match(globalPattern);
@@ -337,7 +361,7 @@ function parsePIDParameters(code: string): PIDParams | null {
     };
 
     // Check if we got valid values
-    const hasValidValues = Object.values(pidParams).every(axis => 
+    const hasValidValues = Object.values(pidParams).every(axis =>
       Object.values(axis).every(value => typeof value === 'number' && !isNaN(value) && value >= 0)
     );
 
@@ -355,14 +379,14 @@ function validatePIDParams(params: PIDParams): { valid: boolean; error?: string 
   for (const axis of axes) {
     for (const pidType of pidTypes) {
       const value = params[axis][pidType];
-      
+
       if (typeof value !== 'number' || isNaN(value) || value < 0) {
         return {
           valid: false,
           error: `Invalid ${pidType} value for ${axis}: ${value}. Must be a positive number.`
         };
       }
-      
+
       if (value > 100) {
         return {
           valid: false,

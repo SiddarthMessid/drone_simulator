@@ -33,7 +33,7 @@ export default function CodeEditor() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const highlightRef = useRef<HTMLDivElement>(null);
   const lineNumbersRef = useRef<HTMLDivElement>(null);
-  const { code, setCode, error, setError } = useEditor();
+  const { code, setCode, error, setError, setIsFocused } = useEditor();
   const { updatePIDParams, telemetry } = useDrone();
   const [isCompiling, setIsCompiling] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
@@ -456,6 +456,8 @@ export default function CodeEditor() {
               onChange={(e) => setCode(e.target.value)}
               onKeyDown={handleKeyDown}
               onScroll={handleScroll}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
               style={{
                 position: "absolute",
                 top: 0,
