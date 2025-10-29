@@ -12,14 +12,19 @@ export default function DroneModel({ color = "#2a2a2a" }: DroneModelProps) {
   const rotorRefs = useRef<THREE.Mesh[]>([]);
   const { telemetry } = useDrone();
 
+  // Show collision box for debugging (set to true to visualize)
+  const showCollisionBox = false;
+
   // Create rotor rotation based on throttle
   useFrame((state, delta) => {
     if (rotorRefs.current) {
       // Ensure minimum rotor speed and smooth acceleration/deceleration
       const minRotorSpeed = 15; // Minimum rotation speed
       const maxRotorSpeed = 60; // Maximum rotation speed
-      const targetSpeed = minRotorSpeed + (Math.abs(telemetry.throttle) + 0.5) * (maxRotorSpeed - minRotorSpeed);
-      
+      const targetSpeed =
+        minRotorSpeed +
+        (Math.abs(telemetry.throttle) + 0.5) * (maxRotorSpeed - minRotorSpeed);
+
       rotorRefs.current.forEach((rotor, index) => {
         if (rotor) {
           // Alternate rotation direction for realistic physics
@@ -51,17 +56,18 @@ export default function DroneModel({ color = "#2a2a2a" }: DroneModelProps) {
 
       {/* Arms */}
       {[
-        { pos: new THREE.Vector3(1.2, 0, 0), rot: new THREE.Euler(0, 0, 0) },      // Right arm
-        { pos: new THREE.Vector3(-1.2, 0, 0), rot: new THREE.Euler(0, 0, 0) },     // Left arm  
-        { pos: new THREE.Vector3(0, 0, 1.2), rot: new THREE.Euler(0, Math.PI/2, 0) }, // Front arm
-        { pos: new THREE.Vector3(0, 0, -1.2), rot: new THREE.Euler(0, Math.PI/2, 0) } // Back arm
+        { pos: new THREE.Vector3(1.2, 0, 0), rot: new THREE.Euler(0, 0, 0) }, // Right arm
+        { pos: new THREE.Vector3(-1.2, 0, 0), rot: new THREE.Euler(0, 0, 0) }, // Left arm
+        {
+          pos: new THREE.Vector3(0, 0, 1.2),
+          rot: new THREE.Euler(0, Math.PI / 2, 0),
+        }, // Front arm
+        {
+          pos: new THREE.Vector3(0, 0, -1.2),
+          rot: new THREE.Euler(0, Math.PI / 2, 0),
+        }, // Back arm
       ].map((arm, index) => (
-        <mesh 
-          key={index}
-          position={arm.pos}
-          rotation={arm.rot}
-          castShadow
-        >
+        <mesh key={index} position={arm.pos} rotation={arm.rot} castShadow>
           <cylinderGeometry args={[0.08, 0.08, 1.8, 8]} />
           <meshPhongMaterial color="#333333" />
         </mesh>
@@ -69,10 +75,10 @@ export default function DroneModel({ color = "#2a2a2a" }: DroneModelProps) {
 
       {/* Motors and Rotors */}
       {[
-        new THREE.Vector3(1.8, 0.15, 1.8),   // Front right
-        new THREE.Vector3(-1.8, 0.15, 1.8),  // Front left
+        new THREE.Vector3(1.8, 0.15, 1.8), // Front right
+        new THREE.Vector3(-1.8, 0.15, 1.8), // Front left
         new THREE.Vector3(-1.8, 0.15, -1.8), // Back left
-        new THREE.Vector3(1.8, 0.15, -1.8)   // Back right
+        new THREE.Vector3(1.8, 0.15, -1.8), // Back right
       ].map((pos, index) => (
         <group key={index} position={pos}>
           {/* Motor */}
@@ -80,9 +86,9 @@ export default function DroneModel({ color = "#2a2a2a" }: DroneModelProps) {
             <cylinderGeometry args={[0.15, 0.15, 0.3, 8]} />
             <meshPhongMaterial color="#1a1a1a" />
           </mesh>
-          
+
           {/* Rotor */}
-          <mesh 
+          <mesh
             ref={(el) => {
               if (el) rotorRefs.current[index] = el;
             }}
@@ -95,11 +101,11 @@ export default function DroneModel({ color = "#2a2a2a" }: DroneModelProps) {
                 <boxGeometry args={[1.2, 0.02, 0.1]} />
                 <meshPhongMaterial color="#666666" />
               </mesh>
-              <mesh rotation={[0, Math.PI/2, 0]}>
+              <mesh rotation={[0, Math.PI / 2, 0]}>
                 <boxGeometry args={[1.2, 0.02, 0.1]} />
                 <meshPhongMaterial color="#666666" />
               </mesh>
-              
+
               {/* Rotor Hub */}
               <mesh>
                 <cylinderGeometry args={[0.05, 0.05, 0.08, 8]} />
@@ -115,7 +121,7 @@ export default function DroneModel({ color = "#2a2a2a" }: DroneModelProps) {
         new THREE.Vector3(0.8, -0.4, 0.8),
         new THREE.Vector3(-0.8, -0.4, 0.8),
         new THREE.Vector3(-0.8, -0.4, -0.8),
-        new THREE.Vector3(0.8, -0.4, -0.8)
+        new THREE.Vector3(0.8, -0.4, -0.8),
       ].map((pos, index) => (
         <mesh key={index} position={pos} castShadow>
           <cylinderGeometry args={[0.05, 0.05, 0.6, 8]} />
@@ -132,6 +138,19 @@ export default function DroneModel({ color = "#2a2a2a" }: DroneModelProps) {
         <sphereGeometry args={[0.05, 8, 8]} />
         <meshPhongMaterial color="#ff0000" emissive="#440000" />
       </mesh>
+
+      {/* Collision Box Visualizer (for debugging) */}
+      {showCollisionBox && (
+        <mesh position={[0, 0, 0]}>
+          <boxGeometry args={[2.0, 1.0, 2.0]} />
+          <meshBasicMaterial
+            color="#00ff00"
+            wireframe={true}
+            transparent={true}
+            opacity={0.5}
+          />
+        </mesh>
+      )}
     </group>
   );
 }

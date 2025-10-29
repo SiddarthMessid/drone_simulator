@@ -27,7 +27,7 @@ interface DroneStore {
   angularVelocity: THREE.Vector3;
   pidParams: PIDParams;
   telemetry: DroneTelemetry;
-  
+
   // Actions
   updateDrone: (state: DroneState) => void;
   updatePIDParams: (params: PIDParams) => void;
@@ -40,19 +40,19 @@ interface DroneStore {
 }
 
 export const useDrone = create<DroneStore>((set, get) => ({
-  // Initial state
-  position: new THREE.Vector3(0, 5, 0),
+  // Initial state - start at safe height above ground
+  position: new THREE.Vector3(0, 10, 0),
   rotation: new THREE.Vector3(0, 0, 0),
   velocity: new THREE.Vector3(0, 0, 0),
   angularVelocity: new THREE.Vector3(0, 0, 0),
   pidParams: defaultPIDParams,
   telemetry: {
-    altitude: 5,
+    altitude: 10,
     speed: 0,
     pitch: 0,
     roll: 0,
     yaw: 0,
-    throttle: 0
+    throttle: 0,
   },
 
   updateDrone: (state: DroneState) => {
@@ -60,7 +60,7 @@ export const useDrone = create<DroneStore>((set, get) => ({
       position: state.position.clone(),
       rotation: state.rotation.clone(),
       velocity: state.velocity.clone(),
-      angularVelocity: state.angularVelocity.clone()
+      angularVelocity: state.angularVelocity.clone(),
     });
   },
 
@@ -104,8 +104,8 @@ export const useDrone = create<DroneStore>((set, get) => ({
         pitch: 0,
         roll: 0,
         yaw: 0,
-        throttle: 0
-      }
+        throttle: 0,
+      },
     });
-  }
+  },
 }));

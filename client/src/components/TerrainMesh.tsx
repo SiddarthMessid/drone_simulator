@@ -1,12 +1,15 @@
-import { useMemo, useRef, useState } from 'react';
-import * as THREE from 'three';
-import { useFrame } from '@react-three/fiber';
-import * as ReactDOM from 'react-dom';
-import { TerrainGenerator, TerrainConfig, TerrainData } from '../lib/terrain/heightmap';
-import { useEnvironment } from '../lib/stores/useEnvironment';
-import { useTerrainConfigStore } from '../lib/hooks/useTerrainConfig';
-import TerrainEditor from './TerrainEditor';
-
+import { useMemo, useRef, useState } from "react";
+import * as THREE from "three";
+import { useFrame } from "@react-three/fiber";
+import * as ReactDOM from "react-dom";
+import {
+  TerrainGenerator,
+  TerrainConfig,
+  TerrainData,
+} from "../lib/terrain/heightmap";
+import { useEnvironment } from "../lib/stores/useEnvironment";
+import { useTerrainConfigStore } from "../lib/hooks/useTerrainConfig";
+import TerrainEditor from "./TerrainEditor";
 
 interface TerrainMeshProps {
   config: TerrainConfig;
@@ -20,9 +23,13 @@ interface TerrainMeshProps {
   debug?: boolean;
 }
 
-export default function TerrainMesh({ config, textures, debug = false }: TerrainMeshProps) {
+export default function TerrainMesh({
+  config,
+  textures,
+  debug = false,
+}: TerrainMeshProps) {
   const meshRef = useRef<THREE.Mesh | null>(null);
-  
+
   const { isFlat } = useTerrainConfigStore();
 
   // Generate terrain data
@@ -32,7 +39,7 @@ export default function TerrainMesh({ config, textures, debug = false }: Terrain
       const resolution = config.resolution;
       const width = config.width;
       const height = config.height;
-      const constantHeight = -0.7;
+      const constantHeight = 0; // Flat terrain at ground level (y=0)
 
       const positions = new Float32Array(resolution * resolution * 3);
       const normals = new Float32Array(resolution * resolution * 3);
@@ -85,7 +92,7 @@ export default function TerrainMesh({ config, textures, debug = false }: Terrain
         indices: new Uint32Array(indices),
         slopeMap,
         minHeight: constantHeight,
-        maxHeight: constantHeight
+        maxHeight: constantHeight,
       } as TerrainData;
     }
 
@@ -97,14 +104,23 @@ export default function TerrainMesh({ config, textures, debug = false }: Terrain
   // Create geometry
   const geometry = useMemo(() => {
     const geo = new THREE.BufferGeometry();
-    
-    geo.setAttribute('position', new THREE.BufferAttribute(terrainData.positions, 3));
-    geo.setAttribute('normal', new THREE.BufferAttribute(terrainData.normals, 3));
-    geo.setAttribute('uv', new THREE.BufferAttribute(terrainData.uvs, 2));
-    geo.setAttribute('slope', new THREE.BufferAttribute(terrainData.slopeMap, 1));
-    
+
+    geo.setAttribute(
+      "position",
+      new THREE.BufferAttribute(terrainData.positions, 3)
+    );
+    geo.setAttribute(
+      "normal",
+      new THREE.BufferAttribute(terrainData.normals, 3)
+    );
+    geo.setAttribute("uv", new THREE.BufferAttribute(terrainData.uvs, 2));
+    geo.setAttribute(
+      "slope",
+      new THREE.BufferAttribute(terrainData.slopeMap, 1)
+    );
+
     geo.setIndex(new THREE.BufferAttribute(terrainData.indices, 1));
-    
+
     return geo;
   }, [terrainData]);
 
@@ -114,13 +130,13 @@ export default function TerrainMesh({ config, textures, debug = false }: Terrain
     const textureConfig = {
       wrapS: THREE.RepeatWrapping,
       wrapT: THREE.RepeatWrapping,
-      repeat: new THREE.Vector2(8, 8)
+      repeat: new THREE.Vector2(8, 8),
     };
 
     // For flat terrain, we'll use a larger texture repeat to make it more visible
     const textureRepeat = isFlat ? 16 : 8;
 
-    Object.values(textures).forEach(texture => {
+    Object.values(textures).forEach((texture) => {
       if (texture) {
         texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
         texture.repeat.set(textureRepeat, textureRepeat);
@@ -140,7 +156,7 @@ export default function TerrainMesh({ config, textures, debug = false }: Terrain
         snowHeight: { value: config.maxHeight * 0.6 },
         rockHeight: { value: config.maxHeight * 0.25 },
         slopeThreshold: { value: 0.6 },
-        tileScale: { value: Math.max(config.width, config.height) / 40.0 }
+        tileScale: { value: Math.max(config.width, config.height) / 40.0 },
       },
       vertexShader: `
           varying vec2 vUv;
@@ -212,7 +228,7 @@ export default function TerrainMesh({ config, textures, debug = false }: Terrain
           gl_FragColor = color;
         }
       `,
-      side: THREE.FrontSide
+      side: THREE.FrontSide,
     });
   }, [textures, config.maxHeight]);
 
@@ -227,13 +243,20 @@ export default function TerrainMesh({ config, textures, debug = false }: Terrain
       width: config.width,
       height: config.height,
       minHeight: terrainData.minHeight,
-      maxHeight: terrainData.maxHeight
+      maxHeight: terrainData.maxHeight,
     });
   });
 
   return (
     <group>
-      <mesh ref={meshRef} geometry={geometry} material={material} receiveShadow castShadow renderOrder={1}>
+      <mesh
+        ref={meshRef}
+        geometry={geometry}
+        material={material}
+        receiveShadow
+        castShadow
+        renderOrder={1}
+      >
         {debug && <wireframeGeometry attach="geometry" args={[geometry]} />}
       </mesh>
     </group>

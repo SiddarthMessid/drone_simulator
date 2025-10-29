@@ -1,6 +1,5 @@
 import * as THREE from 'three';
-import { GLTF, GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
-import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
+import { GLTFLoader, DRACOLoader, GLTF } from 'three-stdlib';
 
 export interface ModelDefinition {
   id: string;
@@ -62,11 +61,11 @@ class ModelRegistry {
     if (!definition) return [];
 
     const shapes: THREE.Object3D[] = [];
-    
+
     if (definition.collision.type === 'compound' && definition.collision.shapes) {
       for (const shape of definition.collision.shapes) {
         let collider: THREE.Mesh;
-        
+
         switch (shape.type) {
           case 'box':
             collider = new THREE.Mesh(
@@ -87,12 +86,12 @@ class ModelRegistry {
             );
             break;
         }
-        
+
         collider.position.copy(shape.offset);
         if (shape.rotation) {
           collider.rotation.copy(shape.rotation);
         }
-        
+
         shapes.push(collider);
       }
     }

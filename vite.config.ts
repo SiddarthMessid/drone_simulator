@@ -27,11 +27,10 @@ export default defineConfig({
   },
   server: {
     host: '0.0.0.0',
-    port: 5000,
+    port: 8080,
     strictPort: true,
     hmr: {
-      clientPort: 443,
-      protocol: 'wss',
+      port: 8081,
     },
   },
   // Add support for large models and audio files

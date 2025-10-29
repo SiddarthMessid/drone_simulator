@@ -12,12 +12,11 @@ interface TerrainConfigState {
 export const useTerrainConfigStore = create<TerrainConfigState>((set) => ({
   isFlat: true,
   config: {
-    // Expand the terrain footprint and add a very large-scale layer so mountains
-    // occupy more of the world instead of tiny bumps.
-    width: 1000,
-    height: 1000,
-    resolution: 128,
-    maxHeight: 75,
+    // Massive terrain for near-infinite feel
+    width: 2000,
+    height: 2000,
+    resolution: 256,
+    maxHeight: 100,
     layers: [
       // Very large features (mountain ranges)
       {

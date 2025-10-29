@@ -45,19 +45,22 @@ export class DronePhysics {
     this.motorTau = c.motorTau;
     this.maxThrust = this.thrustFactor * this.mass * this.gravity;
   }
-  
+
   // Drone collision box half-extents
-  private readonly DRONE_HALF_EXTENTS = new THREE.Vector3(0.6, 0.3, 0.6);
+  // The drone body is 2x0.3x2, landing gear extends 0.6 down (to -0.4 from center)
+  // Total height from center: 0.15 (body top) + 0.6 (landing gear) = 0.75
+  // Width/Depth: rotors extend to ±1.8, but we use a smaller collision box for the body
+  private readonly DRONE_HALF_EXTENTS = new THREE.Vector3(1.0, 0.5, 1.0);
 
   update(
-    currentState: DroneState, 
-    motorOutputs: MotorOutputs, 
-    windForce: THREE.Vector3, 
+    currentState: DroneState,
+    motorOutputs: MotorOutputs,
+    windForce: THREE.Vector3,
     deltaTime: number,
     obstacles: AABB[] = []
   ): { newState: DroneState; collision: CollisionResult } {
     const dt = Math.min(deltaTime, 0.02); // Cap delta time for stability
-    
+
     // Create new state
     const newState: DroneState = {
       position: currentState.position.clone(),
@@ -66,8 +69,8 @@ export class DronePhysics {
       angularVelocity: currentState.angularVelocity.clone()
     };
 
-  // Calculate forces
-  const forces = this.calculateForces(newState, motorOutputs, windForce, dt);
+    // Calculate forces
+    const forces = this.calculateForces(newState, motorOutputs, windForce, dt);
     const torques = this.calculateTorques(newState, motorOutputs);
 
     // Update angular velocity (torque / inertia)
@@ -87,10 +90,10 @@ export class DronePhysics {
     newState.rotation.x = Math.max(-this.maxTilt, Math.min(this.maxTilt, newState.rotation.x));
     newState.rotation.z = Math.max(-this.maxTilt, Math.min(this.maxTilt, newState.rotation.z));
 
-  // Update linear velocity (force / mass)
-  newState.velocity.x += (forces.x / this.mass) * dt;
-  newState.velocity.y += (forces.y / this.mass) * dt;
-  newState.velocity.z += (forces.z / this.mass) * dt;
+    // Update linear velocity (force / mass)
+    newState.velocity.x += (forces.x / this.mass) * dt;
+    newState.velocity.y += (forces.y / this.mass) * dt;
+    newState.velocity.z += (forces.z / this.mass) * dt;
 
     // Apply drag
     newState.velocity.multiplyScalar(1 - this.drag * dt);
@@ -109,53 +112,67 @@ export class DronePhysics {
     // Apply final position
     newState.position.copy(proposedPosition);
 
-    // Terrain collision (use spring-damper contact to avoid snapping)
+    // Robust terrain collision with multi-point sampling
     const { terrain } = useEnvironment.getState();
-    if (terrain) {
-      const terrainHeight = useEnvironment.getState().getTerrainHeight(
-        newState.position.x,
-        newState.position.z
-      );
-      
-      const minClearance = 0.5; // Minimum height above terrain
-      if (newState.position.y < terrainHeight + minClearance) {
-        // penetration (positive when penetrating into ground)
-        const penetration = (terrainHeight + minClearance) - newState.position.y;
-        // contact spring-damper constants (tunable)
-        const k_contact = 60; // N/m
-        const k_damping = 12; // N*s/m
-        // compute contact acceleration to gently push drone out
-        const contactAccel = (k_contact * penetration - k_damping * newState.velocity.y) / this.mass;
-        // apply corrective velocity change
-        newState.velocity.y += contactAccel * dt;
 
-        // Slight damping for tangential motion to simulate friction
-        newState.velocity.x *= 0.9;
-        newState.velocity.z *= 0.9;
-        newState.angularVelocity.multiplyScalar(0.9);
+    let terrainHeight = 0; // Default ground level
 
-        if (!collision.collided) {
-          collision.collided = true;
-          collision.axis = 'y';
-        }
+    if (terrain && terrain.heightMap) {
+      // Sample terrain height at multiple points under the drone for better accuracy
+      const sampleRadius = 0.5; // Sample in a small radius around drone center
+      const samples = [
+        { x: newState.position.x, z: newState.position.z }, // Center
+        { x: newState.position.x + sampleRadius, z: newState.position.z }, // Right
+        { x: newState.position.x - sampleRadius, z: newState.position.z }, // Left
+        { x: newState.position.x, z: newState.position.z + sampleRadius }, // Front
+        { x: newState.position.x, z: newState.position.z - sampleRadius }, // Back
+      ];
+
+      // Get the maximum height from all samples (most conservative)
+      terrainHeight = Math.max(...samples.map(s =>
+        useEnvironment.getState().getTerrainHeight(s.x, s.z)
+      ));
+    }
+
+    // Calculate the bottom of the drone's collision box
+    // The collision box extends DRONE_HALF_EXTENTS.y below the center
+    const droneBottom = newState.position.y - this.DRONE_HALF_EXTENTS.y;
+
+    // Very small clearance for tight terrain following
+    const minClearance = 0.05;
+
+    // Apply ground collision when drone bottom is below terrain + clearance
+    const groundLevel = terrainHeight + minClearance;
+    if (droneBottom < groundLevel) {
+      // Calculate how much the drone center needs to move up
+      const targetCenterHeight = terrainHeight + minClearance + this.DRONE_HALF_EXTENTS.y;
+      const penetration = targetCenterHeight - newState.position.y;
+
+      // Very strong spring-damper for immediate response
+      const k_contact = 500; // N/m - much stronger
+      const k_damping = 50; // N*s/m - stronger damping
+
+      // compute contact acceleration to push drone out
+      const contactAccel = (k_contact * penetration - k_damping * newState.velocity.y) / this.mass;
+
+      // apply corrective velocity change
+      newState.velocity.y += contactAccel * dt;
+
+      // Hard limit: don't let drone bottom go below ground level
+      if (droneBottom < terrainHeight) {
+        newState.position.y = terrainHeight + this.DRONE_HALF_EXTENTS.y + minClearance;
+        newState.velocity.y = Math.max(0, newState.velocity.y);
       }
-    } else {
-      // Fallback to flat ground if no terrain data
-      const minClearance = 0.5;
-      if (newState.position.y < minClearance) {
-        const penetration = (minClearance) - newState.position.y;
-        const k_contact = 60;
-        const k_damping = 12;
-        const contactAccel = (k_contact * penetration - k_damping * newState.velocity.y) / this.mass;
-        newState.velocity.y += contactAccel * dt;
-        newState.velocity.x *= 0.9;
-        newState.velocity.z *= 0.9;
-        newState.angularVelocity.multiplyScalar(0.9);
 
-        if (!collision.collided) {
-          collision.collided = true;
-          collision.axis = 'y';
-        }
+      // Friction on ground contact
+      const frictionFactor = 0.85;
+      newState.velocity.x *= frictionFactor;
+      newState.velocity.z *= frictionFactor;
+      newState.angularVelocity.multiplyScalar(frictionFactor);
+
+      if (!collision.collided) {
+        collision.collided = true;
+        collision.axis = 'y';
       }
     }
 
@@ -163,8 +180,8 @@ export class DronePhysics {
   }
 
   private calculateForces(
-    state: DroneState, 
-    motorOutputs: MotorOutputs, 
+    state: DroneState,
+    motorOutputs: MotorOutputs,
     windForce: THREE.Vector3,
     dt: number
   ): THREE.Vector3 {
@@ -200,15 +217,15 @@ export class DronePhysics {
 
   private calculateTorques(state: DroneState, motorOutputs: MotorOutputs): THREE.Vector3 {
     const torques = new THREE.Vector3();
-    
+
     const torqueStrength = 2.0;
-    
+
     // Pitch torque (around X-axis)
     torques.x = motorOutputs.pitch * torqueStrength;
-    
+
     // Yaw torque (around Y-axis)  
     torques.y = motorOutputs.yaw * torqueStrength * 0.5;
-    
+
     // Roll torque (around Z-axis)
     torques.z = motorOutputs.roll * torqueStrength;
 
@@ -222,40 +239,40 @@ export class DronePhysics {
     obstacles: AABB[]
   ): CollisionResult {
     const collision: CollisionResult = { collided: false, axis: null };
-    
+
     // Test per-axis movement: X -> Y -> Z
-    const axes: Array<{axis: 'x' | 'y' | 'z', index: 0 | 1 | 2}> = [
+    const axes: Array<{ axis: 'x' | 'y' | 'z', index: 0 | 1 | 2 }> = [
       { axis: 'x', index: 0 },
       { axis: 'y', index: 1 },
       { axis: 'z', index: 2 }
     ];
-    
+
     for (const { axis, index } of axes) {
       // Move along this axis
       proposedPosition.setComponent(index, proposedPosition.getComponent(index) + deltaPosition.getComponent(index));
-      
+
       // Create drone AABB at new position
       const droneAABB: AABB = {
         center: proposedPosition.clone(),
         half: this.DRONE_HALF_EXTENTS.clone()
       };
-      
+
       // Check collision with all obstacles
       for (const obstacle of obstacles) {
         if (this.aabbIntersect(droneAABB, obstacle)) {
           // Calculate overlap and resolve
           const overlap = this.calculateOverlap(droneAABB, obstacle, axis);
           const sign = Math.sign(deltaPosition.getComponent(index));
-          
+
           // Push drone out of obstacle
           proposedPosition.setComponent(
             index,
             proposedPosition.getComponent(index) - overlap * sign
           );
-          
+
           // Stop velocity on collision axis
           velocity.setComponent(index, 0);
-          
+
           // Apply tangential damping for sliding effect
           const dampingFactor = 0.9;
           for (let i = 0; i < 3; i++) {
@@ -263,14 +280,14 @@ export class DronePhysics {
               velocity.setComponent(i, velocity.getComponent(i) * dampingFactor);
             }
           }
-          
+
           collision.collided = true;
           collision.axis = axis;
           break; // Only resolve first collision per axis
         }
       }
     }
-    
+
     return collision;
   }
 
@@ -285,10 +302,10 @@ export class DronePhysics {
   private calculateOverlap(a: AABB, b: AABB, axis: 'x' | 'y' | 'z'): number {
     const axisMap = { x: 0, y: 1, z: 2 };
     const index = axisMap[axis];
-    
+
     const distance = Math.abs(a.center.getComponent(index) - b.center.getComponent(index));
     const combinedHalf = a.half.getComponent(index) + b.half.getComponent(index);
-    
+
     return combinedHalf - distance;
   }
 

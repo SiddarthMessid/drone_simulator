@@ -15,11 +15,11 @@ export default function ModularTerrainEnvironment() {
     grass: useTexture("/textures/grass.png"),
     rock: useTexture("/textures/asphalt.png"),
     snow: useTexture("/textures/sand.jpg"),
-    dirt: useTexture("/textures/wood.jpg")
+    dirt: useTexture("/textures/wood.jpg"),
   };
 
   // Configure texture repeat
-  Object.values(textures).forEach(texture => {
+  Object.values(textures).forEach((texture) => {
     texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
     texture.repeat.set(20, 20);
   });
@@ -28,52 +28,30 @@ export default function ModularTerrainEnvironment() {
 
   return (
     <>
-        {/* Terrain */}
-  <TerrainMesh textures={textures} config={config} />
+      {/* Terrain */}
+      <TerrainMesh textures={textures} config={config} />
       {/* Grid Helper (only for flat mode) */}
-      {isFlat && <gridHelper args={[100, 50, "#444444", "#222222"]} position={[0, -0.45, 0]} />}
-
-      {/* Large distant tiled ground to hide terrain edges and give an "infinite" feeling */}
-      {isFlat && (() => {
-        try {
-          // Clone a texture so we can set a very large repeat without affecting the close-up terrain
-          const distantTexture = textures.grass.clone();
-          distantTexture.wrapS = distantTexture.wrapT = THREE.RepeatWrapping;
-          // Large repeat to avoid obvious repetition at horizon
-          distantTexture.repeat.set(2000, 2000);
-          // Use mipmaps and linear filtering to reduce shimmering
-          distantTexture.generateMipmaps = true;
-          distantTexture.minFilter = THREE.LinearMipMapLinearFilter;
-          distantTexture.magFilter = THREE.LinearFilter;
-          // modest anisotropy to reduce aliasing at glancing angles
-          // If the renderer sets anisotropy later this may be overridden.
-          // @ts-ignore
-          distantTexture.anisotropy = Math.min(8, 4);
-
-          return (
-            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.71, 0]} receiveShadow renderOrder={0}>
-              <planeGeometry args={[20000, 20000]} />
-              <meshPhongMaterial map={distantTexture} side={THREE.FrontSide} depthWrite={false} transparent={true} />
-            </mesh>
-          );
-        } catch (e) {
-          return null;
-        }
-      })()}
+      {isFlat && (
+        <gridHelper
+          args={[100, 50, "#444444", "#222222"]}
+          position={[0, 0.01, 0]}
+        />
+      )}
 
       {/* Distant procedural mountains layer (infinite-looking) */}
-      {!isFlat && (() => {
-        try {
-          // Shader material that displaces a low-resolution plane using FBM in the vertex shader
-          const mountainMaterial = new THREE.ShaderMaterial({
-            uniforms: {
-              grassTexture: { value: textures.grass },
-              rockTexture: { value: textures.rock },
-              time: { value: 0 },
-              tileScale: { value: 0.0006 }, // how the noise tiles across the huge plane
-              heightScale: { value: 120.0 }
-            },
-            vertexShader: `
+      {!isFlat &&
+        (() => {
+          try {
+            // Shader material that displaces a low-resolution plane using FBM in the vertex shader
+            const mountainMaterial = new THREE.ShaderMaterial({
+              uniforms: {
+                grassTexture: { value: textures.grass },
+                rockTexture: { value: textures.rock },
+                time: { value: 0 },
+                tileScale: { value: 0.0006 }, // how the noise tiles across the huge plane
+                heightScale: { value: 80.0 },
+              },
+              vertexShader: `
               varying vec2 vUv;
               varying float vHeight;
 
@@ -113,13 +91,18 @@ export default function ModularTerrainEnvironment() {
                 // compute a world-space uv scaled very small so the huge plane samples noise gradually
                 vec2 worldUv = (position.xz) * tileScale;
                 float n = fbm(worldUv * 1.0);
-                float h = n * heightScale * 0.0009; // small vertical exaggeration for silhouette
+                
+                // Distance from center - fade out closer areas
+                float distFromCenter = length(position.xz);
+                float distanceFade = smoothstep(500.0, 2000.0, distFromCenter);
+                
+                float h = n * heightScale * 0.0009 * distanceFade; // small vertical exaggeration for silhouette
                 vec3 pos = position + vec3(0.0, h, 0.0);
                 vHeight = pos.y;
                 gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
               }
             `,
-            fragmentShader: `
+              fragmentShader: `
               uniform sampler2D grassTexture;
               uniform sampler2D rockTexture;
               varying vec2 vUv;
@@ -131,34 +114,47 @@ export default function ModularTerrainEnvironment() {
                 vec4 g = texture2D(grassTexture, vUv * 8.0);
                 vec4 r = texture2D(rockTexture, vUv * 8.0);
                 vec4 color = mix(g, r, gh);
-                // fade out alpha towards horizon to blend with sky (invert so distant silhouettes fade)
-                float alpha = 1.0 - smoothstep(-10.0, 60.0, vHeight);
-                alpha = clamp(alpha, 0.05, 1.0);
+                
+                // Only show distant mountains, fade out closer areas completely
+                float distanceFade = smoothstep(0.0, 200.0, length(vUv - vec2(0.5, 0.5)) * 20000.0);
+                float alpha = distanceFade * (1.0 - smoothstep(-10.0, 60.0, vHeight));
+                alpha = clamp(alpha, 0.0, 0.6);
+                
+                // Discard fragments that are too close or too transparent
+                if (alpha < 0.01) discard;
+                
                 gl_FragColor = vec4(color.rgb, alpha);
               }
             `,
-            transparent: true,
-            side: THREE.FrontSide
-          });
+              transparent: true,
+              side: THREE.FrontSide,
+            });
 
-          // Make the distant mountain layer not write depth so it won't z-fight with the close terrain mesh.
-          mountainMaterial.depthWrite = false;
+            // Make the distant mountain layer not write depth so it won't z-fight with the close terrain mesh.
+            mountainMaterial.depthWrite = false;
 
-          // Low-resolution grid is enough because displacement comes from shader
-          return (
-            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.72, 0]} receiveShadow renderOrder={0}>
-              <planeGeometry args={[20000, 20000, 128, 128]} />
-              {/* Make the distant mountain layer not write depth so it won't z-fight with the close terrain mesh. */}
-              <primitive object={mountainMaterial} attach="material" />
-            </mesh>
-          );
-        } catch (e) {
-          return null;
-        }
-      })()}
+            // Low-resolution grid is enough because displacement comes from shader
+            return (
+              <mesh
+                rotation={[-Math.PI / 2, 0, 0]}
+                position={[0, -50.0, 0]}
+                receiveShadow
+                renderOrder={-1}
+              >
+                <planeGeometry args={[20000, 20000, 128, 128]} />
+                {/* Make the distant mountain layer not write depth so it won't z-fight with the close terrain mesh. */}
+                <primitive object={mountainMaterial} attach="material" />
+              </mesh>
+            );
+          } catch (e) {
+            return null;
+          }
+        })()}
 
-      {/* Boundary Markers */}
-      <BoundaryMarkers environmentSize={environmentSize} />
+      {/* Boundary Markers - Only show in flat terrain */}
+      {isFlat && <BoundaryMarkers environmentSize={environmentSize} />}
+
+      {/* Note: Invisible boundary walls are handled in physics (useEnvironment.getObstacleAABBs) */}
 
       {/* Skybox */}
       <mesh>
