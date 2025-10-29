@@ -84,16 +84,37 @@ export class DronePhysics {
     newState.angularVelocity.y *= dragFactor * 1.5; // Moderate extra damping for yaw
     newState.angularVelocity.z *= dragFactor;
 
-    // Hard limit on yaw angular velocity to prevent runaway
-    const maxYawRate = 2.0; // rad/s
-    if (Math.abs(newState.angularVelocity.y) > maxYawRate) {
-      newState.angularVelocity.y = Math.sign(newState.angularVelocity.y) * maxYawRate;
-    }
+    // No hard limit on yaw - allow continuous rotation at any speed
+    // Angular drag will naturally limit maximum yaw rate
 
-    // Update rotation
-    newState.rotation.x += newState.angularVelocity.x * dt;
-    newState.rotation.y += newState.angularVelocity.y * dt;
-    newState.rotation.z += newState.angularVelocity.z * dt;
+    // Update rotation using quaternions for proper body-frame angular velocity integration
+    // Convert current Euler angles to quaternion
+    const currentQuat = new THREE.Quaternion().setFromEuler(
+      new THREE.Euler(newState.rotation.x, newState.rotation.y, newState.rotation.z, 'XYZ')
+    );
+
+    // Create quaternion from body-frame angular velocity
+    // ω_quat = 0.5 * ω_body * q_current
+    const omega = new THREE.Quaternion(
+      newState.angularVelocity.x * dt * 0.5,
+      newState.angularVelocity.y * dt * 0.5,
+      newState.angularVelocity.z * dt * 0.5,
+      0
+    );
+
+    // Integrate: q_new = q_current + ω_quat * q_current
+    const deltaQuat = omega.multiply(currentQuat);
+    currentQuat.x += deltaQuat.x;
+    currentQuat.y += deltaQuat.y;
+    currentQuat.z += deltaQuat.z;
+    currentQuat.w += deltaQuat.w;
+    currentQuat.normalize();
+
+    // Convert back to Euler angles
+    const newEuler = new THREE.Euler().setFromQuaternion(currentQuat, 'XYZ');
+    newState.rotation.x = newEuler.x;
+    newState.rotation.y = newEuler.y;
+    newState.rotation.z = newEuler.z;
 
     // Normalize yaw angle to -PI to PI range to prevent accumulation
     while (newState.rotation.y > Math.PI) newState.rotation.y -= 2 * Math.PI;
