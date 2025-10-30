@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import DraggableWindow from "./components/DraggableWindow";
 import Console from "./components/Console";
+import PositionDisplay from "./components/PositionDisplay";
 import "@fontsource/inter";
 
 // Define control keys for the drone
@@ -196,6 +197,105 @@ function App() {
       }}
     >
       <KeyboardControls map={keyMap}>
+        {/* Header */}
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: "40px",
+            background: "rgba(20, 20, 20, 0.95)",
+            borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+            display: "flex",
+            alignItems: "center",
+            padding: "0 16px",
+            zIndex: 1000,
+            backdropFilter: "blur(10px)",
+          }}
+        >
+          {/* Logo/Icon */}
+          <div
+            style={{
+              width: "28px",
+              height: "28px",
+              background: "rgba(14, 165, 233, 0.15)",
+              border: "1px solid rgba(14, 165, 233, 0.3)",
+              borderRadius: "6px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              marginRight: "12px",
+            }}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M12 2L4 6V12C4 16.5 7.5 20.5 12 22C16.5 20.5 20 16.5 20 12V6L12 2Z"
+                fill="rgba(14, 165, 233, 0.6)"
+              />
+              <circle cx="12" cy="10" r="2" fill="#0a0a0a" />
+              <circle cx="8" cy="8" r="1.5" fill="#0a0a0a" />
+              <circle cx="16" cy="8" r="1.5" fill="#0a0a0a" />
+              <circle cx="8" cy="12" r="1.5" fill="#0a0a0a" />
+              <circle cx="16" cy="12" r="1.5" fill="#0a0a0a" />
+            </svg>
+          </div>
+
+          {/* Title */}
+          <div style={{ flex: 1 }}>
+            <h1
+              style={{
+                fontSize: "16px",
+                fontWeight: "600",
+                color: "rgba(255, 255, 255, 0.9)",
+                margin: 0,
+                letterSpacing: "0.3px",
+              }}
+            >
+              3D Drone Simulator
+            </h1>
+          </div>
+
+          {/* Status Badge */}
+          <div
+            style={{
+              padding: "4px 12px",
+              background: "rgba(34, 197, 94, 0.1)",
+              border: "1px solid rgba(34, 197, 94, 0.3)",
+              borderRadius: "12px",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+            }}
+          >
+            <div
+              style={{
+                width: "6px",
+                height: "6px",
+                borderRadius: "50%",
+                background: "#22c55e",
+                boxShadow: "0 0 6px rgba(34, 197, 94, 0.5)",
+                animation: "pulse 2s infinite",
+              }}
+            />
+            <span
+              style={{
+                fontSize: "11px",
+                fontWeight: "500",
+                color: "#22c55e",
+              }}
+            >
+              ONLINE
+            </span>
+          </div>
+        </div>
+
         {/* Main Layout Container - Column Layout */}
         <div
           style={{
@@ -204,6 +304,7 @@ function App() {
             width: "100%",
             height: "100%",
             position: "relative",
+            paddingTop: "40px", // Add padding for header
           }}
         >
           {/* Top Area - Horizontal Layout with Left Panel + Central Canvas */}
@@ -476,6 +577,9 @@ function App() {
 
               {/* Camera Controls */}
               <CameraControls />
+
+              {/* Position Display - Bottom Right (inside canvas area) */}
+              <PositionDisplay />
             </div>
           </div>
 

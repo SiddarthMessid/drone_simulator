@@ -1,50 +1,41 @@
+/**
+ * Simulation Drone Adapter
+ * Connects the drone controller to the physics simulation
+ */
+
 import { DroneAdapter, DroneState, DroneCommand } from '../interfaces/drone';
 import { DronePhysics } from '../dronePhysics';
 
 export class SimulationDroneAdapter implements DroneAdapter {
-  private stateUpdateCallback: ((state: DroneState) => void) | null = null;
+    private stateUpdateCallback: ((state: DroneState) => void) | null = null;
 
-  constructor(private physics: DronePhysics) {}
-  
-  async connect(): Promise<void> {
-    // Nothing to connect in simulation
-    return Promise.resolve();
-  }
+    constructor(private physics: DronePhysics) { }
 
-  async disconnect(): Promise<void> {
-    // Clean up any simulation resources
-    this.stateUpdateCallback = null;
-    return Promise.resolve();
-  }
-  
-  async sendCommand(command: DroneCommand): Promise<void> {
-    // Translate high-level commands to simulation inputs
-    switch (command.type) {
-      case 'takeoff':
-        // Implement takeoff behavior
-        break;
-      case 'land':
-        // Implement landing behavior
-        break;
-      case 'emergencyStop':
-        // Implement emergency stop
-        break;
-      // Add other command implementations
+    async connect(): Promise<void> {
+        return Promise.resolve();
     }
-  }
-  
-  sendTelemetry(state: DroneState): void {
-    // Update simulation state if needed
-  }
-  
-  onStateUpdate(callback: (state: DroneState) => void): void {
-    this.stateUpdateCallback = callback;
-  }
 
-  // Method to be called from simulation loop
-  updateState(state: DroneState): void {
-    if (this.stateUpdateCallback) {
-      this.stateUpdateCallback(state);
+    async disconnect(): Promise<void> {
+        this.stateUpdateCallback = null;
+        return Promise.resolve();
     }
-  }
+
+    async sendCommand(command: DroneCommand): Promise<void> {
+        // Commands are handled by DroneController
+        return Promise.resolve();
+    }
+
+    sendTelemetry(state: DroneState): void {
+        // Telemetry is handled by the simulation loop
+    }
+
+    onStateUpdate(callback: (state: DroneState) => void): void {
+        this.stateUpdateCallback = callback;
+    }
+
+    updateState(state: DroneState): void {
+        if (this.stateUpdateCallback) {
+            this.stateUpdateCallback(state);
+        }
+    }
 }

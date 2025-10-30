@@ -1,8 +1,3 @@
-/**
- * Drone Interface Definitions
- * Core types for drone control system
- */
-
 import * as THREE from "three";
 
 export interface DroneState {
@@ -12,16 +7,9 @@ export interface DroneState {
   angularVelocity: THREE.Vector3;
 }
 
-export interface MotorOutputs {
-  pitch: number;    // pitch torque
-  roll: number;     // roll torque
-  yaw: number;      // yaw torque
-  throttle: number; // normalized throttle [0-1]
-}
-
 export interface DroneCommand {
   id: string;
-  type: 'takeoff' | 'land' | 'hover' | 'setPitch' | 'setRoll' | 'setYaw' | 'setThrottle' | 'moveTo' | 'emergencyStop';
+  type: 'takeoff' | 'land' | 'setPitch' | 'setRoll' | 'setYaw' | 'setThrottle' | 'moveTo' | 'hover' | 'emergencyStop';
   parameters: Record<string, any>;
   resolve: () => void;
   reject: (error: Error) => void;

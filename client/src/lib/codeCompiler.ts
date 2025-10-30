@@ -88,8 +88,6 @@ executeDroneCommands();`;
           // Only enable position hold if not already enabled
           // User can manually toggle it via the Control Panel
           if (!droneStore.positionHoldEnabled) {
-            console.log("⚠️ Position Hold is disabled. Enabling it for autopilot commands...");
-            console.log("💡 You can toggle Position Hold manually in the Control Panel");
             droneStore.enablePositionHold(true);
           }
         }

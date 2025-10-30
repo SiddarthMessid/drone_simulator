@@ -95,26 +95,12 @@ export default function DroneSimulation() {
           droneRef.current.rotation.set(0, 0, 0);
         }
 
-        console.log("Drone teleported to:", startPoint.x, 0.5, startPoint.z);
-        console.log("DroneRef position:", droneRef.current?.position);
+        // Drone teleported to start position
 
         // Wait a frame for the position to update, then start takeoff
         setTimeout(() => {
-          console.log("Starting takeoff");
-          console.log(
-            "Store position before takeoff:",
-            useDrone.getState().position
-          );
-          console.log(
-            "Position hold enabled?",
-            useDrone.getState().positionHoldEnabled
-          );
-
           // Enable position hold to allow autopilot to work
           useDrone.getState().enablePositionHold(true);
-          console.log("Position hold now enabled");
-
-          console.log("Is autopilot active?", drone.isAutopilotActive());
           missionState.current = "takeoff";
           drone
             .takeoff(10)
@@ -178,12 +164,7 @@ export default function DroneSimulation() {
         }
       : getControls();
 
-    // Debug: Log when yaw keys are pressed
-    if (controls.yawLeft || controls.yawRight) {
-      console.log(
-        `Yaw keys - Left: ${controls.yawLeft}, Right: ${controls.yawRight}, EditorFocused: ${editorFocused}`
-      );
-    }
+    // Yaw controls (logging removed for performance)
 
     // Emergency: Press 'R' key to reset yaw target
     if (
@@ -242,30 +223,10 @@ export default function DroneSimulation() {
           throttle: controls.throttleUp ? 1 : controls.throttleDown ? -0.5 : 0,
         };
 
-    // Debug: Log controls and rotation
-    if (
-      controls.forward ||
-      controls.backward ||
-      controls.left ||
-      controls.right
-    ) {
-      console.log(
-        `Controls - Forward: ${controls.forward}, Yaw: ${(
-          (rotation.y * 180) /
-          Math.PI
-        ).toFixed(1)}°, Pitch setpoint: ${manualSetpoints.pitch.toFixed(2)}`
-      );
-    }
+    // Controls are active (logging removed for performance)
 
     // Get setpoints from drone controller (handles both manual and autopilot modes)
     const setpoints = drone.update(manualSetpoints, delta);
-
-    // Log active controls for debugging
-    if (Object.values(setpoints).some((v) => v !== 0)) {
-      const mode = drone.isAutopilotActive() ? "autopilot" : "manual";
-      const inputSource = hasGamepadInput ? "gamepad" : "keyboard";
-      console.log(`Controls active (${mode} - ${inputSource}):`, setpoints);
-    }
 
     // Determine motor outputs: bypass PID for manual control, use PID for autopilot
     let motorOutputs;
@@ -333,10 +294,6 @@ export default function DroneSimulation() {
     // Skip physics update if we just teleported
     if (skipPhysicsFrames.current > 0) {
       skipPhysicsFrames.current--;
-      console.log(
-        "Skipping physics frame, remaining:",
-        skipPhysicsFrames.current
-      );
       return; // Skip this frame entirely
     }
 
