@@ -1,8 +1,18 @@
-import React from 'react';
-import { Button } from './ui/button';
-import { Card } from './ui/card';
-import { useMultiDrone } from '../lib/stores/useMultiDrone';
-import { Plus, Minus, Triangle, Minus as LineIcon, Circle, Users, Wind, Target, AlertTriangle } from 'lucide-react';
+import React from "react";
+import { Button } from "./ui/button";
+import { Card } from "./ui/card";
+import { useMultiDrone } from "../lib/stores/useMultiDrone";
+import {
+  Plus,
+  Minus,
+  Triangle,
+  Minus as LineIcon,
+  Circle,
+  Users,
+  Wind,
+  Target,
+  AlertTriangle,
+} from "lucide-react";
 
 export default function MultiDroneController() {
   const {
@@ -16,12 +26,12 @@ export default function MultiDroneController() {
     emergencyLandAll,
     getDrone,
     updateFormationPositions,
-    getDroneCount
+    getDroneCount,
   } = useMultiDrone();
 
   return (
     <div className="flex flex-col h-full bg-slate-900/95 text-white">
-      <div className="flex-1 p-4 space-y-4 overflow-y-auto">
+      <div className="flex-1 p-4 space-y-4 overflow-y-auto custom-scrollbar">
         <div className="flex justify-between items-center">
           <h2 className="text-lg font-bold">Drone Fleet Control</h2>
           <Button
@@ -52,7 +62,9 @@ export default function MultiDroneController() {
                 Add Drone
               </Button>
               <Button
-                onClick={() => state.activeDroneId && removeDrone(state.activeDroneId)}
+                onClick={() =>
+                  state.activeDroneId && removeDrone(state.activeDroneId)
+                }
                 disabled={!state.activeDroneId}
                 variant="destructive"
                 className="flex-1"
@@ -72,12 +84,14 @@ export default function MultiDroneController() {
               onClick={() => setActiveDrone(id)}
               variant={state.activeDroneId === id ? "default" : "outline"}
               style={{
-                backgroundColor: state.activeDroneId === id ? 
-                  state.droneColors.get(id) : 'transparent',
-                borderColor: state.droneColors.get(id)
+                backgroundColor:
+                  state.activeDroneId === id
+                    ? state.droneColors.get(id)
+                    : "transparent",
+                borderColor: state.droneColors.get(id),
               }}
             >
-              {id.split('_')[1]}
+              {id.split("_")[1]}
             </Button>
           ))}
         </div>
@@ -87,7 +101,7 @@ export default function MultiDroneController() {
           <h3 className="text-sm font-semibold">Formations</h3>
           <div className="grid grid-cols-3 gap-2">
             <Button
-              onClick={() => formationFlight('triangle')}
+              onClick={() => formationFlight("triangle")}
               disabled={getDroneCount() < 2}
               variant="outline"
               size="sm"
@@ -96,7 +110,7 @@ export default function MultiDroneController() {
               Triangle
             </Button>
             <Button
-              onClick={() => formationFlight('line')}
+              onClick={() => formationFlight("line")}
               disabled={getDroneCount() < 2}
               variant="outline"
               size="sm"
@@ -105,7 +119,7 @@ export default function MultiDroneController() {
               Line
             </Button>
             <Button
-              onClick={() => formationFlight('circle')}
+              onClick={() => formationFlight("circle")}
               disabled={getDroneCount() < 2}
               variant="outline"
               size="sm"
@@ -121,7 +135,7 @@ export default function MultiDroneController() {
           <h3 className="text-sm font-semibold">Swarm Behaviors</h3>
           <div className="grid grid-cols-1 gap-2">
             <Button
-              onClick={() => swarmBehavior('follow')}
+              onClick={() => swarmBehavior("follow")}
               disabled={getDroneCount() < 2}
               variant="outline"
               size="sm"
@@ -134,13 +148,24 @@ export default function MultiDroneController() {
                 if (!state.activeDroneId) return;
                 const drone = getDrone(state.activeDroneId);
                 if (!drone) return;
-                const enabled = typeof drone.isPositionHoldEnabled === 'function' ? drone.isPositionHoldEnabled() : false;
+                const enabled =
+                  typeof drone.isPositionHoldEnabled === "function"
+                    ? drone.isPositionHoldEnabled()
+                    : false;
                 drone.enablePositionHold(!enabled);
                 // Trigger an update to store so UI re-renders and other drones get updated
                 updateFormationPositions();
               }}
               disabled={!state.activeDroneId}
-              variant={state.activeDroneId && getDrone(state.activeDroneId) && typeof getDrone(state.activeDroneId)!.isPositionHoldEnabled === 'function' && getDrone(state.activeDroneId)!.isPositionHoldEnabled() ? 'default' : 'outline'}
+              variant={
+                state.activeDroneId &&
+                getDrone(state.activeDroneId) &&
+                typeof getDrone(state.activeDroneId)!.isPositionHoldEnabled ===
+                  "function" &&
+                getDrone(state.activeDroneId)!.isPositionHoldEnabled()
+                  ? "default"
+                  : "outline"
+              }
               size="sm"
             >
               <Target className="w-4 h-4 mr-1" />

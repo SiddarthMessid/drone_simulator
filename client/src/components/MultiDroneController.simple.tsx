@@ -23,7 +23,7 @@ export default function MultiDroneControllerSimple() {
 
   return (
     <div className="flex flex-col h-full bg-slate-900/95 text-white">
-      <div className="flex-1 p-4 space-y-4 overflow-y-auto">
+      <div className="flex-1 p-4 space-y-4 overflow-y-auto custom-scrollbar">
         <div className="flex justify-between items-center">
           <h2 className="text-lg font-bold">Drone Fleet Control</h2>
           <Button

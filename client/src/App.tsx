@@ -9,7 +9,7 @@ import ControlPanel from "./components/ControlPanel";
 import WindControls from "./components/WindControls";
 import ImportedModels from "./components/ImportedModels";
 import EnvironmentEditorInteractive from "./components/EnvironmentEditorInteractive";
-import SceneGenerator from "./components/SceneGenerator";
+import TerrainEditor from "./components/TerrainEditor";
 import RetractableWindControls from "./components/RetractableWindControls";
 import ErrorBoundary from "./components/ErrorBoundary";
 import WebGLFallback from "./components/WebGLFallback";
@@ -137,7 +137,7 @@ function App() {
   const [environmentPanelOpen, setEnvironmentPanelOpen] = useState(false);
   const [windPanelOpen, setWindPanelOpen] = useState(false);
   const [controlPanelOpen, setControlPanelOpen] = useState(false);
-  const [sceneGeneratorOpen, setSceneGeneratorOpen] = useState(false);
+  const [terrainEditorOpen, setTerrainEditorOpen] = useState(false);
   const [fleetPanelOpen, setFleetPanelOpen] = useState(false);
   const [missionPanelOpen, setMissionPanelOpen] = useState(false);
   const [fileExplorerOpen, setFileExplorerOpen] = useState(true);
@@ -540,7 +540,7 @@ function App() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setSceneGeneratorOpen(true)}
+                  onClick={() => setTerrainEditorOpen(true)}
                   style={{
                     color: "#888",
                     background: "rgba(0,0,0,0.7)",
@@ -716,17 +716,17 @@ function App() {
 
           {/* Draggable Windows */}
           <DraggableWindow
-            title="Scene Generator"
-            isOpen={sceneGeneratorOpen}
-            onClose={() => setSceneGeneratorOpen(false)}
+            title="Terrain Editor"
+            isOpen={terrainEditorOpen}
+            onClose={() => setTerrainEditorOpen(false)}
             initialPosition={{
               x: typeof window !== "undefined" ? window.innerWidth - 420 : 800,
               y: 50,
             }}
             width={400}
-            height={650}
+            height={500}
           >
-            <SceneGenerator />
+            <TerrainEditor />
           </DraggableWindow>
 
           <DraggableWindow

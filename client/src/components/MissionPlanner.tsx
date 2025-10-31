@@ -15,13 +15,10 @@ export default function MissionPlanner() {
     clearMission,
     selectedScanType,
     setSelectedScanType,
-    tempSurveyPoints,
     tempCorridorPoints,
     structureRadius,
-    completeSurvey,
     completeCorridor,
     setStructureRadius,
-    addSurveyPoint,
     addCorridorPoint,
     setStructureCenter,
     isExecuting,
@@ -97,7 +94,7 @@ export default function MissionPlanner() {
 
       <div className="border-t border-gray-700 pt-2 mt-2">
         <h4 className="text-xs font-semibold mb-2">Scan Patterns</h4>
-        <div className="grid grid-cols-3 gap-1 mb-2">
+        <div className="grid grid-cols-2 gap-1 mb-2">
           <Button
             variant={selectedScanType === "corridor" ? "default" : "outline"}
             size="sm"
@@ -114,28 +111,16 @@ export default function MissionPlanner() {
           >
             Structure
           </Button>
-          <Button
-            variant={selectedScanType === "survey" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setSelectedScanType("survey")}
-            className="text-xs px-2"
-          >
-            Survey
-          </Button>
         </div>
         <Button
           variant={
-            mode === "addingSurvey" ||
-            mode === "addingCorridor" ||
-            mode === "addingStructure"
+            mode === "addingCorridor" || mode === "addingStructure"
               ? "default"
               : "outline"
           }
           size="sm"
           onClick={() => {
-            if (selectedScanType === "survey") {
-              setMode("addingSurvey");
-            } else if (selectedScanType === "corridor") {
+            if (selectedScanType === "corridor") {
               setMode("addingCorridor");
             } else if (selectedScanType === "structure") {
               setMode("addingStructure");
@@ -149,24 +134,6 @@ export default function MissionPlanner() {
             : `Set ${selectedScanType} Scan`}
         </Button>
       </div>
-
-      {mode === "addingSurvey" && (
-        <div className="bg-blue-900/30 p-2 rounded space-y-2">
-          <div className="text-xs text-blue-300">
-            📍 Click to add survey points ({tempSurveyPoints.length} added, need
-            3+)
-          </div>
-          <Button
-            variant="default"
-            size="sm"
-            onClick={completeSurvey}
-            disabled={tempSurveyPoints.length < 3}
-            className="w-full"
-          >
-            Complete Survey ({tempSurveyPoints.length} points)
-          </Button>
-        </div>
-      )}
 
       {mode === "addingCorridor" && (
         <div className="bg-blue-900/30 p-2 rounded space-y-2">

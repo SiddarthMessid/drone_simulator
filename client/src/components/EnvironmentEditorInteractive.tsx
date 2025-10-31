@@ -86,6 +86,7 @@ export default function EnvironmentEditorInteractive() {
 
   return (
     <div
+      className="custom-scrollbar"
       style={{
         padding: "15px",
         color: "#e5e5e5",

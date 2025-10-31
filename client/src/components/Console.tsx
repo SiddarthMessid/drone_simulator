@@ -179,6 +179,7 @@ export default function Console({ onClose }: ConsoleProps = {}) {
       {/* Console Messages */}
       <div
         ref={consoleRef}
+        className="custom-scrollbar"
         style={{
           flex: 1,
           padding: "8px",

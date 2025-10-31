@@ -493,7 +493,6 @@ export default function DroneSimulation() {
             mode,
             setStart,
             setTarget,
-            addSurveyPoint,
             addCorridorPoint,
             setStructureCenter,
           } = useMission.getState();
@@ -503,8 +502,6 @@ export default function DroneSimulation() {
             setStart(p);
           } else if (mode === "selectTarget") {
             setTarget(p);
-          } else if (mode === "addingSurvey") {
-            addSurveyPoint(p);
           } else if (mode === "addingCorridor") {
             addCorridorPoint(p);
           } else if (mode === "addingStructure") {
@@ -560,13 +557,8 @@ export default function DroneSimulation() {
 
       {/* Mission markers (start/stop/scan points) - Large and visible */}
       {(() => {
-        const {
-          startPoint,
-          targetPoint,
-          scanPattern,
-          tempSurveyPoints,
-          tempCorridorPoints,
-        } = useMission.getState();
+        const { startPoint, targetPoint, scanPattern, tempCorridorPoints } =
+          useMission.getState();
         const markers: any[] = [];
 
         if (startPoint) {
@@ -758,52 +750,8 @@ export default function DroneSimulation() {
                 <meshBasicMaterial color="#00ffaa" transparent opacity={0.5} />
               </mesh>
             );
-          } else if (scanPattern.type === "survey") {
-            // Grid pattern
-            const width = scanPattern.width || 30;
-            const height = scanPattern.height || 30;
-            const spacing = scanPattern.spacing || 5;
-            const rows = Math.floor(height / spacing);
-            const cols = Math.floor(width / spacing);
-
-            for (let row = 0; row <= rows; row++) {
-              for (let col = 0; col <= cols; col++) {
-                const x = center.x - width / 2 + col * spacing;
-                const z = center.z - height / 2 + row * spacing;
-                markers.push(
-                  <mesh
-                    key={`survey_${row}_${col}`}
-                    position={[x, center.y + 0.5, z]}
-                  >
-                    <sphereGeometry args={[0.3, 8, 8]} />
-                    <meshStandardMaterial
-                      color="#aa00ff"
-                      emissive="#aa00ff"
-                      emissiveIntensity={0.6}
-                    />
-                  </mesh>
-                );
-              }
-            }
           }
         }
-
-        // Render temporary survey points (while building polygon)
-        tempSurveyPoints.forEach((point, index) => {
-          markers.push(
-            <mesh
-              key={`temp_survey_${index}`}
-              position={[point.x, point.y + 1, point.z]}
-            >
-              <sphereGeometry args={[0.5, 16, 16]} />
-              <meshStandardMaterial
-                color="#aa00ff"
-                emissive="#aa00ff"
-                emissiveIntensity={0.8}
-              />
-            </mesh>
-          );
-        });
 
         // Render temporary corridor points (while building path)
         tempCorridorPoints.forEach((point, index) => {

@@ -295,7 +295,10 @@ export default function FileExplorer() {
       </div>
 
       {/* File Tree */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "8px 0" }}>
+      <div
+        className="custom-scrollbar"
+        style={{ flex: 1, overflowY: "auto", padding: "8px 0" }}
+      >
         {/* New File Input */}
         {showNewFileInput && (
           <div
