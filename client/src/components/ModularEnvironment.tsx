@@ -1,25 +1,30 @@
-import { useEffect, useRef, useState } from 'react';
-import * as THREE from 'three';
-import { useFrame } from '@react-three/fiber';
-import { useTexture } from '@react-three/drei';
-import { useEnvironment, Obstacle } from '../lib/stores/useEnvironment';
-import { modelRegistry } from '../lib/models/modelRegistry';
+import { useEffect, useRef, useState } from "react";
+import * as THREE from "three";
+import { useFrame } from "@react-three/fiber";
+import { useTexture } from "@react-three/drei";
+import { useEnvironment, Obstacle } from "../lib/stores/useEnvironment";
+import { modelRegistry } from "../lib/models/modelRegistry";
 
 type ModelCache = {
   [key: string]: THREE.Group;
 };
 
 export default function ModularEnvironment() {
-  const { environmentSize, getAllObstacles, groundTexture: storeGroundTexture, skyColor } = useEnvironment();
+  const {
+    environmentSize,
+    getAllObstacles,
+    groundTexture: storeGroundTexture,
+    skyColor,
+  } = useEnvironment();
   const allObstacles = getAllObstacles();
-  
+
   const [modelCache, setModelCache] = useState<ModelCache>({});
   const [loadingModels, setLoadingModels] = useState(true);
-  
+
   const textureToLoad = storeGroundTexture || "/textures/grass.png";
   const groundTexture = useTexture(textureToLoad);
   const skyTexture = useTexture("/textures/sky.png");
-  
+
   // Configure texture repeat
   groundTexture.wrapS = groundTexture.wrapT = THREE.RepeatWrapping;
   groundTexture.repeat.set(20, 20);
@@ -42,9 +47,7 @@ export default function ModularEnvironment() {
   // Load all required models
   useEffect(() => {
     const modelsToLoad = new Set(
-      allObstacles
-        .filter(obs => obs.modelId)
-        .map(obs => obs.modelId!)
+      allObstacles.filter((obs) => obs.modelId).map((obs) => obs.modelId!)
     );
 
     if (modelsToLoad.size === 0) {
@@ -56,7 +59,7 @@ export default function ModularEnvironment() {
       try {
         const gltf = await modelRegistry.loadModel(modelId);
         const model = gltf.scene.clone();
-        
+
         // Apply model definition transforms
         const def = modelRegistry.getDefinition(modelId);
         if (def?.scale) {
@@ -66,17 +69,18 @@ export default function ModularEnvironment() {
           model.rotation.copy(def.rotation);
         }
 
-        setModelCache(prev => ({
+        setModelCache((prev) => ({
           ...prev,
-          [modelId]: model
+          [modelId]: model,
         }));
       } catch (error) {
         console.error(`Failed to load model ${modelId}:`, error);
       }
     };
 
-    Promise.all(Array.from(modelsToLoad).map(loadModel))
-      .finally(() => setLoadingModels(false));
+    Promise.all(Array.from(modelsToLoad).map(loadModel)).finally(() =>
+      setLoadingModels(false)
+    );
   }, [allObstacles]);
 
   const renderObstacle = (obstacle: Obstacle) => {
@@ -118,8 +122,16 @@ export default function ModularEnvironment() {
         <primitive
           key={obstacle.id}
           object={model.clone()}
-          position={[obstacle.position.x, obstacle.position.y, obstacle.position.z]}
-          rotation={obstacle.rotation ? [obstacle.rotation.x, obstacle.rotation.y, obstacle.rotation.z] : [0, 0, 0]}
+          position={[
+            obstacle.position.x,
+            obstacle.position.y,
+            obstacle.position.z,
+          ]}
+          rotation={
+            obstacle.rotation
+              ? [obstacle.rotation.x, obstacle.rotation.y, obstacle.rotation.z]
+              : [0, 0, 0]
+          }
         />
       );
     }
@@ -128,12 +140,22 @@ export default function ModularEnvironment() {
     return (
       <mesh
         key={obstacle.id}
-        position={[obstacle.position.x, obstacle.position.y, obstacle.position.z]}
-        rotation={obstacle.rotation ? [obstacle.rotation.x, obstacle.rotation.y, obstacle.rotation.z] : [0, 0, 0]}
+        position={[
+          obstacle.position.x,
+          obstacle.position.y,
+          obstacle.position.z,
+        ]}
+        rotation={
+          obstacle.rotation
+            ? [obstacle.rotation.x, obstacle.rotation.y, obstacle.rotation.z]
+            : [0, 0, 0]
+        }
         castShadow
         receiveShadow
       >
-        <boxGeometry args={[obstacle.size.x, obstacle.size.y, obstacle.size.z]} />
+        <boxGeometry
+          args={[obstacle.size.x, obstacle.size.y, obstacle.size.z]}
+        />
         <meshPhongMaterial color={obstacle.color || "#666666"} />
       </mesh>
     );
@@ -142,19 +164,25 @@ export default function ModularEnvironment() {
   return (
     <>
       {/* Ground Plane */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.5, 0]} receiveShadow>
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[0, -0.5, 0]}
+        receiveShadow
+      >
         <planeGeometry args={[environmentSize.width, environmentSize.height]} />
         <meshLambertMaterial map={groundTexture} />
       </mesh>
 
       {/* Grid Helper */}
-      <gridHelper args={[100, 50, "#444444", "#222222"]} position={[0, -0.45, 0]} />
+      <gridHelper
+        args={[100, 50, "#444444", "#222222"]}
+        position={[0, -0.45, 0]}
+      />
 
       {/* Boundary Markers */}
       <BoundaryMarkers environmentSize={environmentSize} />
 
-      {/* All Obstacles (Default + User-Added) */}
-      {!loadingModels && allObstacles.map(renderObstacle)}
+      {/* Obstacles are now rendered in Environment.tsx as InteractiveObstacles */}
 
       {/* Skybox */}
       <mesh>
@@ -169,22 +197,34 @@ export default function ModularEnvironment() {
   );
 }
 
-function BoundaryMarkers({ environmentSize }: { environmentSize: { width: number; height: number }}) {
+function BoundaryMarkers({
+  environmentSize,
+}: {
+  environmentSize: { width: number; height: number };
+}) {
   const halfWidth = environmentSize.width / 2;
   const halfHeight = environmentSize.height / 2;
   const postHeight = 2;
   const spacing = 10;
 
   const posts = [];
-  
+
   // Generate boundary posts
   for (let x = -halfWidth; x <= halfWidth; x += spacing) {
     posts.push(
-      <mesh key={`north-${x}`} position={[x, postHeight/2, -halfHeight]} castShadow>
+      <mesh
+        key={`north-${x}`}
+        position={[x, postHeight / 2, -halfHeight]}
+        castShadow
+      >
         <boxGeometry args={[0.2, postHeight, 0.2]} />
         <meshPhongMaterial color="#ff0000" />
       </mesh>,
-      <mesh key={`south-${x}`} position={[x, postHeight/2, halfHeight]} castShadow>
+      <mesh
+        key={`south-${x}`}
+        position={[x, postHeight / 2, halfHeight]}
+        castShadow
+      >
         <boxGeometry args={[0.2, postHeight, 0.2]} />
         <meshPhongMaterial color="#ff0000" />
       </mesh>
@@ -193,11 +233,19 @@ function BoundaryMarkers({ environmentSize }: { environmentSize: { width: number
 
   for (let z = -halfHeight; z <= halfHeight; z += spacing) {
     posts.push(
-      <mesh key={`west-${z}`} position={[-halfWidth, postHeight/2, z]} castShadow>
+      <mesh
+        key={`west-${z}`}
+        position={[-halfWidth, postHeight / 2, z]}
+        castShadow
+      >
         <boxGeometry args={[0.2, postHeight, 0.2]} />
         <meshPhongMaterial color="#ff0000" />
       </mesh>,
-      <mesh key={`east-${z}`} position={[halfWidth, postHeight/2, z]} castShadow>
+      <mesh
+        key={`east-${z}`}
+        position={[halfWidth, postHeight / 2, z]}
+        castShadow
+      >
         <boxGeometry args={[0.2, postHeight, 0.2]} />
         <meshPhongMaterial color="#ff0000" />
       </mesh>

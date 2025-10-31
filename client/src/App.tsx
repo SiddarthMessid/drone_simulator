@@ -4,10 +4,11 @@ import React, { Suspense, useState, useEffect } from "react";
 import * as THREE from "three";
 import DroneSimulation from "./components/DroneSimulation";
 import CodeEditor from "./components/CodeEditor";
+import FileExplorer from "./components/FileExplorer";
 import ControlPanel from "./components/ControlPanel";
 import WindControls from "./components/WindControls";
 import ImportedModels from "./components/ImportedModels";
-import EnvironmentEditor from "./components/EnvironmentEditor";
+import EnvironmentEditorInteractive from "./components/EnvironmentEditorInteractive";
 import SceneGenerator from "./components/SceneGenerator";
 import RetractableWindControls from "./components/RetractableWindControls";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -29,6 +30,7 @@ import {
   Sparkles,
   Users,
   Target,
+  FileCode,
 } from "lucide-react";
 import DraggableWindow from "./components/DraggableWindow";
 import Console from "./components/Console";
@@ -138,6 +140,9 @@ function App() {
   const [sceneGeneratorOpen, setSceneGeneratorOpen] = useState(false);
   const [fleetPanelOpen, setFleetPanelOpen] = useState(false);
   const [missionPanelOpen, setMissionPanelOpen] = useState(false);
+  const [fileExplorerOpen, setFileExplorerOpen] = useState(true);
+  const [fileExplorerWidth, setFileExplorerWidth] = useState(250);
+  const [isResizingFileExplorer, setIsResizingFileExplorer] = useState(false);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsResizing(true);
@@ -146,6 +151,11 @@ function App() {
 
   const handleBottomMouseDown = (e: React.MouseEvent) => {
     setIsResizingBottom(true);
+    e.preventDefault();
+  };
+
+  const handleFileExplorerMouseDown = (e: React.MouseEvent) => {
+    setIsResizingFileExplorer(true);
     e.preventDefault();
   };
 
@@ -163,14 +173,21 @@ function App() {
           setBottomPanelHeight(newHeight);
         }
       }
+      if (isResizingFileExplorer) {
+        const newWidth = e.clientX;
+        if (newWidth >= 150 && newWidth <= 400) {
+          setFileExplorerWidth(newWidth);
+        }
+      }
     };
 
     const handleMouseUp = () => {
       setIsResizing(false);
       setIsResizingBottom(false);
+      setIsResizingFileExplorer(false);
     };
 
-    if (isResizing || isResizingBottom) {
+    if (isResizing || isResizingBottom || isResizingFileExplorer) {
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
     }
@@ -179,7 +196,7 @@ function App() {
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [isResizing, isResizingBottom]);
+  }, [isResizing, isResizingBottom, isResizingFileExplorer]);
 
   // Check WebGL availability early
   if (!isWebGLAvailable()) {
@@ -307,7 +324,7 @@ function App() {
             paddingTop: "40px", // Add padding for header
           }}
         >
-          {/* Top Area - Horizontal Layout with Left Panel + Central Canvas */}
+          {/* Top Area - Horizontal Layout with File Explorer + Code Editor + Central Canvas */}
           <div
             style={{
               display: "flex",
@@ -319,6 +336,62 @@ function App() {
               position: "relative",
             }}
           >
+            {/* File Explorer - Independent Panel */}
+            {fileExplorerOpen && (
+              <>
+                <div
+                  style={{
+                    width: `${fileExplorerWidth}px`,
+                    height: "100%",
+                    background: "rgba(10, 10, 10, 0.98)",
+                    borderRight: "1px solid rgba(255, 255, 255, 0.1)",
+                    flexShrink: 0,
+                  }}
+                >
+                  <FileExplorer />
+                </div>
+
+                {/* File Explorer Resize Handle */}
+                <div
+                  onMouseDown={handleFileExplorerMouseDown}
+                  style={{
+                    width: "4px",
+                    height: "100%",
+                    cursor: "col-resize",
+                    background: isResizingFileExplorer
+                      ? "#0e639c"
+                      : "transparent",
+                    transition: "background 0.2s",
+                    position: "relative",
+                    zIndex: 12,
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isResizingFileExplorer)
+                      e.currentTarget.style.background =
+                        "rgba(14, 99, 156, 0.3)";
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isResizingFileExplorer)
+                      e.currentTarget.style.background = "transparent";
+                  }}
+                >
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "50%",
+                      left: "50%",
+                      transform: "translate(-50%, -50%)",
+                      width: "3px",
+                      height: "40px",
+                      background: "#3e3e42",
+                      borderRadius: "2px",
+                      pointerEvents: "none",
+                    }}
+                  />
+                </div>
+              </>
+            )}
+
             {/* Left Panel - Code Editor (Collapsible & Resizable) */}
             {leftPanelOpen && (
               <div
@@ -662,12 +735,12 @@ function App() {
             onClose={() => setEnvironmentPanelOpen(false)}
             initialPosition={{
               x: typeof window !== "undefined" ? window.innerWidth - 420 : 800,
-              y: 100,
+              y: 50,
             }}
-            width={400}
-            height={500}
+            width={420}
+            height={650}
           >
-            <EnvironmentEditor />
+            <EnvironmentEditorInteractive />
           </DraggableWindow>
 
           <DraggableWindow

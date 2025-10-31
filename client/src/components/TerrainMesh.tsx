@@ -198,6 +198,8 @@ export default function TerrainMesh({
 
           // Sample textures using wrapped world-space UVs so the texture maps properly across large mountains
           vec4 grass = texture2D(grassTexture, worldUV);
+          // Darken the grass color moderately
+          grass.rgb *= 0.45; // Reduce brightness to 45% for darker green
           vec4 rock = texture2D(rockTexture, worldUV);
           vec4 snow = texture2D(snowTexture, worldUV);
           vec4 dirt = texture2D(dirtTexture, worldUV);

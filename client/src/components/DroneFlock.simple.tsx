@@ -2,7 +2,7 @@ import { useRef, useEffect } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { useMultiDrone } from "../lib/stores/useMultiDrone.simple";
-import DroneModel from "./DroneModel";
+import DroneModelSwitcher from "./DroneModelSwitcher";
 import { PIDController } from "../lib/pidController";
 import { DronePhysics } from "../lib/dronePhysics";
 import { useWind } from "../lib/stores/useWind";
@@ -135,7 +135,7 @@ export default function DroneFlockSimple() {
             ref={(el) => el && droneRefs.current.set(id, el)}
             position={[position.x, position.y, position.z]}
           >
-            <DroneModel color={droneColors.get(id) || "#2a2a2a"} />
+            <DroneModelSwitcher color={droneColors.get(id) || "#2a2a2a"} />
           </group>
         );
       })}

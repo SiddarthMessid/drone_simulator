@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
 import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
@@ -28,10 +28,16 @@ export default function DroneModelGLTF({
 
   // Load GLTF/GLB model - useGLTF handles textures automatically
   const { scene } = useGLTF(modelPath);
-  console.log("🚁 Model loaded successfully from:", modelPath);
 
   // Clone the scene to avoid sharing references between instances
-  const clonedScene = scene.clone(true);
+  // Use useMemo to prevent re-cloning on every render
+  const clonedScene = useMemo(() => {
+    console.log("🚁 Model loaded successfully from:", modelPath);
+    const cloned = scene.clone(true);
+    // Apply scale immediately during clone
+    cloned.scale.set(scale, scale, scale);
+    return cloned;
+  }, [scene, modelPath, scale]);
 
   useEffect(() => {
     if (!clonedScene) return;
@@ -118,11 +124,10 @@ export default function DroneModelGLTF({
     });
   });
 
-  // Apply scale to the cloned scene
+  // Setup materials and visibility
   useEffect(() => {
     if (clonedScene) {
-      clonedScene.scale.set(scale, scale, scale);
-      console.log("🚁 GLTF Model loaded with scale:", scale);
+      console.log("🚁 GLTF Model setup with scale:", scale);
       console.log("🚁 Model position:", clonedScene.position);
       console.log("🚁 Model visible:", clonedScene.visible);
 

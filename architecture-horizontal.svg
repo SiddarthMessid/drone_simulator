@@ -1,0 +1,191 @@
+digraph HorizontalArchitecture {
+	graph [bb="0,0,903.67,375",
+		rankdir=LR
+	];
+	node [fontname=Arial,
+		fontsize=11,
+		label="\N",
+		shape=box,
+		style="rounded,filled"
+	];
+	edge [fontname=Arial,
+		fontsize=9
+	];
+	subgraph cluster_presentation {
+		graph [bb="83,8,171.85,367",
+			fillcolor="#E3F2FD",
+			fontname="Arial Bold",
+			fontsize=12,
+			label="Presentation\nLayer",
+			lheight=0.40,
+			lp="127.42,348.6",
+			lwidth=0.82,
+			style=filled
+		];
+		node [fillcolor="#90CAF9"];
+		DroneSimulation	[height=0.5,
+			label="Drone\nSimulation",
+			pos="127.42,304",
+			width=0.93553];
+		ControlPanel	[height=0.5,
+			label="Control\nPanel",
+			pos="127.42,250",
+			width=0.75];
+		CodeEditor	[height=0.5,
+			label="Code\nEditor",
+			pos="127.42,88",
+			width=0.75];
+		MultiDrone	[height=0.5,
+			label="Multi-Drone\nController",
+			pos="127.42,196",
+			width=1.0118];
+		MissionPlanner	[height=0.5,
+			label="Mission\nPlanner",
+			pos="127.42,142",
+			width=0.75];
+		Scene	[height=0.5,
+			label="3D\nScene",
+			pos="127.42,34",
+			width=0.75];
+	}
+	subgraph cluster_application {
+		graph [bb="192.85,62,286.6,313",
+			fillcolor="#FFF9C4",
+			fontname="Arial Bold",
+			fontsize=12,
+			label="Application\nLayer",
+			lheight=0.40,
+			lp="239.72,294.6",
+			lwidth=0.79,
+			style=filled
+		];
+		node [fillcolor="#FFF59D"];
+		StoresDrone	[height=0.5,
+			label="Drone\nStore",
+			pos="239.72,250",
+			width=0.75];
+		StoresMulti	[height=0.5,
+			label="MultiDrone\nStore",
+			pos="239.72,196",
+			width=0.9609];
+		StoresEnv	[height=0.5,
+			label="Environment\nStore",
+			pos="239.72,88",
+			width=1.0799];
+		StoresMission	[height=0.5,
+			label="Mission\nStore",
+			pos="239.72,142",
+			width=0.75];
+	}
+	subgraph cluster_domain {
+		graph [bb="307.6,62,389.13,367",
+			fillcolor="#C8E6C9",
+			fontname="Arial Bold",
+			fontsize=12,
+			label="Domain\nLayer",
+			lheight=0.40,
+			lp="348.36,348.6",
+			lwidth=0.54,
+			style=filled
+		];
+		node [fillcolor="#A5D6A7"];
+		Physics	[height=0.5,
+			label="Drone\nPhysics",
+			pos="348.36,250",
+			width=0.75];
+		PID	[height=0.5,
+			label="PID\nController",
+			pos="348.36,304",
+			width=0.88451];
+		Controller	[height=0.5,
+			label="Drone\nController",
+			pos="348.36,196",
+			width=0.88451];
+		Terrain	[height=0.5,
+			label="Terrain\nGenerator",
+			pos="348.36,142",
+			width=0.9101];
+		Collision	[height=0.5,
+			label="Collision\nDetector",
+			pos="348.36,88",
+			width=0.79961];
+	}
+	subgraph cluster_infrastructure {
+		graph [bb="445.65,170,810.99,259",
+			fillcolor="#FFCCBC",
+			fontname="Arial Bold",
+			fontsize=12,
+			label="Infrastructure\nLayer",
+			lheight=0.40,
+			lp="628.32,240.6",
+			lwidth=0.91,
+			style=filled
+		];
+		node [fillcolor="#FFAB91"];
+		Express	[height=0.5,
+			label="Express\nServer",
+			pos="481.52,196",
+			width=0.7741];
+		WebSocket	[height=0.5,
+			label=WebSocket,
+			pos="582.51,196",
+			width=1.0034];
+		Express -> WebSocket	[pos="e,546.12,196 509.83,196 517.54,196 526.16,196 534.67,196"];
+		MSP	[height=0.5,
+			label="MSP\nProtocol",
+			pos="683.81,196",
+			width=0.78268];
+		WebSocket -> MSP	[pos="e,655.28,189.88 619.08,189.5 627.18,189.21 635.81,189.17 644.03,189.4"];
+		MSP -> WebSocket	[dir=back,
+			pos="s,655.28,202.12 644.03,202.6 635.81,202.83 627.18,202.79 619.08,202.5"];
+		Serial	[height=0.5,
+			label="USB\nSerial",
+			pos="775.99,196",
+			width=0.75];
+		MSP -> Serial	[pos="e,748.54,189.79 712.36,189.73 720.17,189.28 728.82,189.15 737.13,189.33"];
+		Serial -> MSP	[dir=back,
+			pos="s,748.54,202.21 737.13,202.67 728.82,202.85 720.17,202.72 712.36,202.27"];
+	}
+	DroneSimulation -> StoresDrone	[pos="e,212.3,262.93 161.52,287.8 174.34,281.52 189.06,274.32 202.18,267.89"];
+	ControlPanel -> StoresDrone	[pos="e,212.52,250 154.84,250 168.76,250 186.06,250 201.33,250"];
+	CodeEditor -> StoresMission	[pos="e,212.52,129.17 154.84,100.93 169.03,107.88 186.74,116.55 202.23,124.13"];
+	MultiDrone -> StoresMulti	[pos="e,204.96,196 164.23,196 173.64,196 183.9,196 193.72,196"];
+	MissionPlanner -> StoresMission	[pos="e,212.52,142 154.84,142 168.76,142 186.06,142 201.33,142"];
+	Scene -> StoresEnv	[pos="e,201.26,69.657 154.84,46.934 165.7,52.248 178.61,58.571 191.02,64.643"];
+	StoresDrone -> Physics	[pos="e,320.94,250 267.08,250 279.9,250 295.54,250 309.6,250"];
+	StoresDrone -> PID	[pos="e,316.39,288.31 267.08,263.35 278.86,269.31 293.02,276.48 306.15,283.13"];
+	StoresDrone -> Controller	[pos="e,316.39,211.69 267.08,236.65 278.86,230.69 293.02,223.52 306.15,216.87"];
+	StoresMulti -> Controller	[pos="e,316.18,196 274.76,196 284.31,196 294.81,196 304.79,196"];
+	StoresEnv -> Terrain	[pos="e,315.4,125.82 277.12,106.43 286.16,111.01 295.91,115.94 305.19,120.64"];
+	StoresEnv -> Collision	[pos="e,319.13,88 278.92,88 288.25,88 298.25,88 307.65,88"];
+	Physics -> Express	[pos="e,453.44,207.15 375.59,239.2 394.9,231.25 421.44,220.32 443,211.45"];
+	Controller -> Express	[pos="e,453.22,196 380.45,196 398.85,196 422.32,196 441.91,196"];
+	WebSocket -> StoresDrone	[dir=back,
+		label=feedback,
+		lp="417.39,64.636",
+		pos="s,566.91,177.82 559.61,169.22 510.09,111.79 387.63,-12.491 307.6,58 279.86,82.431 306.94,192.14 286.6,223 281.82,230.25 274.36,235.82 \
+266.84,239.96"];
+	FlightController	[fillcolor="#FFFFFF",
+		height=0.65694,
+		label="Flight\nController",
+		pos="871.83,195",
+		shape=cylinder,
+		style=filled,
+		width=0.88451];
+	Serial -> FlightController	[pos="e,839.66,195.33 803.38,195.72 811.13,195.64 819.81,195.54 828.3,195.45"];
+	User	[fillcolor="#FFFFFF",
+		height=0.5,
+		label=User,
+		pos="27,250",
+		shape=ellipse,
+		style=filled,
+		width=0.75];
+	User -> DroneSimulation	[pos="e,93.271,285.81 48.393,261.19 58.511,266.74 71.138,273.67 83.266,280.32",
+		style=dashed];
+	User -> ControlPanel	[pos="e,99.975,250 54.376,250 64.857,250 77.113,250 88.514,250",
+		style=dashed];
+	User -> CodeEditor	[pos="e,100.02,100.75 31.582,231.96 37.865,204.18 53.139,150.4 83,115 85.273,112.3 87.887,109.8 90.68,107.48",
+		style=dashed];
+	FlightController -> Serial	[dir=back,
+		pos="s,839.66,195.33 828.3,195.45 819.81,195.54 811.13,195.64 803.38,195.72"];
+}

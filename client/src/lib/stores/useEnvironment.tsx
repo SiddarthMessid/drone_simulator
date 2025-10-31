@@ -84,7 +84,7 @@ interface EnvironmentStore {
 }
 
 export const useEnvironment = create<EnvironmentStore>((set, get) => ({
-  obstacles: [],
+  obstacles: DEFAULT_OBSTACLES,
   environmentSize: { width: 200, height: 200 },
   groundTexture: undefined,
   skyColor: undefined,
@@ -134,14 +134,13 @@ export const useEnvironment = create<EnvironmentStore>((set, get) => ({
 
   getAllObstacles: () => {
     const state = get();
-    // In flat terrain, return default obstacles + user obstacles
-    // In mountain terrain, return only user obstacles (no defaults)
-    return [...DEFAULT_OBSTACLES, ...state.obstacles];
+    // Return all obstacles from state (which already includes defaults on init)
+    return state.obstacles;
   },
 
   getObstacleAABBs: () => {
     const state = get();
-    const allObstacles = [...DEFAULT_OBSTACLES, ...state.obstacles];
+    const allObstacles = state.obstacles;
     const aabbs = allObstacles.map((obstacle) => ({
       center: new THREE.Vector3(
         obstacle.position.x,

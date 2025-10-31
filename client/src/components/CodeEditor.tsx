@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { useEditor } from "../lib/stores/useEditor";
 import { compileCode } from "../lib/codeCompiler";
 import { useDrone } from "../lib/stores/useDrone";
-import { Play, FileCode, Info, X } from "lucide-react";
+import { useFileSystem } from "../lib/stores/useFileSystem";
+import { Play, FileCode, Info, X, Save } from "lucide-react";
 
 // Custom scrollbar styles
 const scrollbarStyles = `
@@ -35,9 +36,11 @@ export default function CodeEditor() {
   const lineNumbersRef = useRef<HTMLDivElement>(null);
   const { code, setCode, error, setError, setIsFocused } = useEditor();
   const { updatePIDParams, telemetry } = useDrone();
+  const { currentFileId, getCurrentFile, updateFile } = useFileSystem();
   const [isCompiling, setIsCompiling] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [showInfo, setShowInfo] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const defaultCode = `def get_pid_parameters():
     return {
@@ -63,11 +66,36 @@ export default function CodeEditor() {
         }
     }`;
 
+  // Load file when currentFileId changes
   useEffect(() => {
-    if (!code) {
+    const currentFile = getCurrentFile();
+    if (currentFile) {
+      setCode(currentFile.content);
+      setHasUnsavedChanges(false);
+    } else if (!code) {
       setCode(defaultCode);
     }
-  }, []);
+  }, [currentFileId]);
+
+  // Track unsaved changes
+  useEffect(() => {
+    const currentFile = getCurrentFile();
+    if (currentFile && code !== currentFile.content) {
+      setHasUnsavedChanges(true);
+    } else {
+      setHasUnsavedChanges(false);
+    }
+  }, [code, currentFileId]);
+
+  // Save file function
+  const saveFile = () => {
+    if (currentFileId) {
+      updateFile(currentFileId, code);
+      setHasUnsavedChanges(false);
+      setSuccessMessage("File saved!");
+      setTimeout(() => setSuccessMessage(""), 2000);
+    }
+  };
 
   useEffect(() => {
     updateLineNumbers();
@@ -306,7 +334,10 @@ export default function CodeEditor() {
             <span
               style={{ fontSize: "13px", color: "#cccccc", fontWeight: "500" }}
             >
-              pid_controller.py
+              {getCurrentFile()?.name || "Untitled"}
+              {hasUnsavedChanges && (
+                <span style={{ color: "#f85149", marginLeft: "6px" }}>●</span>
+              )}
             </span>
             <button
               onClick={() => setShowInfo(!showInfo)}

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1000" height="600" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .title { font: bold 18px Arial; fill: #333; }
+      .axis-label { font: 14px Arial; fill: #666; }
+      .tick-label { font: 12px Arial; fill: #666; }
+      .grid-line { stroke: #e0e0e0; stroke-width: 1; }
+      .axis-line { stroke: #333; stroke-width: 2; }
+      .legend-text { font: 12px Arial; fill: #333; }
+    </style>
+  </defs>
+  <rect width="1000" height="600" fill="white"/>
+  <text x="500" y="30" class="title" text-anchor="middle">Proportional Gain (Kp) Sensitivity Analysis</text>
+<line x1="80" y1="60" x2="80" y2="520" class="grid-line"/>
+<line x1="157" y1="60" x2="157" y2="520" class="grid-line"/>
+<line x1="234" y1="60" x2="234" y2="520" class="grid-line"/>
+<line x1="311" y1="60" x2="311" y2="520" class="grid-line"/>
+<line x1="388" y1="60" x2="388" y2="520" class="grid-line"/>
+<line x1="465" y1="60" x2="465" y2="520" class="grid-line"/>
+<line x1="542" y1="60" x2="542" y2="520" class="grid-line"/>
+<line x1="619" y1="60" x2="619" y2="520" class="grid-line"/>
+<line x1="696" y1="60" x2="696" y2="520" class="grid-line"/>
+<line x1="773" y1="60" x2="773" y2="520" class="grid-line"/>
+<line x1="850" y1="60" x2="850" y2="520" class="grid-line"/>
+<line x1="80" y1="60" x2="850" y2="60" class="grid-line"/>
+<line x1="80" y1="106" x2="850" y2="106" class="grid-line"/>
+<line x1="80" y1="152" x2="850" y2="152" class="grid-line"/>
+<line x1="80" y1="198" x2="850" y2="198" class="grid-line"/>
+<line x1="80" y1="244" x2="850" y2="244" class="grid-line"/>
+<line x1="80" y1="290" x2="850" y2="290" class="grid-line"/>
+<line x1="80" y1="336" x2="850" y2="336" class="grid-line"/>
+<line x1="80" y1="382" x2="850" y2="382" class="grid-line"/>
+<line x1="80" y1="428" x2="850" y2="428" class="grid-line"/>
+<line x1="80" y1="474" x2="850" y2="474" class="grid-line"/>
+<line x1="80" y1="520" x2="850" y2="520" class="grid-line"/>
+<line x1="80" y1="520" x2="850" y2="520" class="axis-line"/>
+<text x="465" y="560" class="axis-label" text-anchor="middle">Kp Value</text>
+<line x1="80" y1="60" x2="80" y2="520" class="axis-line"/>
+<text x="30" y="290" class="axis-label" text-anchor="middle" transform="rotate(-90, 30, 290)">Metric Value</text>
+<path d="M 80 60 L 165.55555555555554 207.92531120331955 L 251.11111111111111 269.0041493775934 L 336.6666666666667 305.2697095435685 L 422.22222222222223 329.12863070539424 L 507.77777777777777 347.26141078838174 L 678.8888888888889 372.0746887966805 L 850 388.298755186722" stroke="#2196F3" stroke-width="3" fill="none"/>
+<path d="M 80 392.63243292786274 L 165.55555555555554 287.666875602848 L 251.11111111111111 227.10969692023718 L 336.6666666666667 184.81947027767166 L 422.22222222222223 152.80315235527786 L 507.77777777777777 127.31965848045496 L 678.8888888888889 88.60146359000373 L 850 60" stroke="#F44336" stroke-width="3" fill="none"/>
+<path d="M 80 60.45999999999998 L 165.55555555555554 60.45999999999998 L 251.11111111111111 60.45999999999998 L 336.6666666666667 60.45999999999998 L 422.22222222222223 60.45999999999998 L 507.77777777777777 60.45999999999998 L 678.8888888888889 60.45999999999998 L 850 60.45999999999998" stroke="#4CAF50" stroke-width="3" fill="none"/>
+<text x="80" y="540" class="tick-label" text-anchor="middle">0.1</text>
+<text x="165.55555555555554" y="540" class="tick-label" text-anchor="middle">0.2</text>
+<text x="251.11111111111111" y="540" class="tick-label" text-anchor="middle">0.3</text>
+<text x="336.6666666666667" y="540" class="tick-label" text-anchor="middle">0.4</text>
+<text x="422.22222222222223" y="540" class="tick-label" text-anchor="middle">0.5</text>
+<text x="507.77777777777777" y="540" class="tick-label" text-anchor="middle">0.6</text>
+<text x="678.8888888888889" y="540" class="tick-label" text-anchor="middle">0.8</text>
+<text x="850" y="540" class="tick-label" text-anchor="middle">1.0</text>
+<text x="70" y="65" class="tick-label" text-anchor="end">10</text>
+<text x="70" y="111" class="tick-label" text-anchor="end">9</text>
+<text x="70" y="157" class="tick-label" text-anchor="end">8</text>
+<text x="70" y="203" class="tick-label" text-anchor="end">7</text>
+<text x="70" y="249" class="tick-label" text-anchor="end">6</text>
+<text x="70" y="295" class="tick-label" text-anchor="end">5</text>
+<text x="70" y="341" class="tick-label" text-anchor="end">4</text>
+<text x="70" y="387" class="tick-label" text-anchor="end">3</text>
+<text x="70" y="433" class="tick-label" text-anchor="end">2</text>
+<text x="70" y="479" class="tick-label" text-anchor="end">1</text>
+<text x="70" y="525" class="tick-label" text-anchor="end">0</text>
+<line x1="870" y1="110" x2="900" y2="110" stroke="#2196F3" stroke-width="3"/>
+<text x="910" y="115" class="legend-text">Rise Time (s)</text>
+<line x1="870" y1="135" x2="900" y2="135" stroke="#F44336" stroke-width="3"/>
+<text x="910" y="140" class="legend-text">Overshoot (%)</text>
+<line x1="870" y1="160" x2="900" y2="160" stroke="#4CAF50" stroke-width="3"/>
+<text x="910" y="165" class="legend-text">Settling Time (s)</text>
+<rect x="251.11111111111111" y="60" width="171.11111111111111" height="460" fill="#90EE90" opacity="0.2"/>
+<text x="336.6666666666667" y="50" class="legend-text" text-anchor="middle">Optimal Range</text>
+</svg>

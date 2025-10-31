@@ -1,0 +1,177 @@
+digraph Architecture {
+	graph [bb="0,0,994,692.2",
+		rankdir=TB
+	];
+	node [fillcolor=lightblue,
+		fontname=Arial,
+		label="\N",
+		shape=box,
+		style="rounded,filled"
+	];
+	edge [fontname=Arial,
+		fontsize=10
+	];
+	subgraph cluster_presentation {
+		graph [bb="62,530,986,629.2",
+			fillcolor=lightgray,
+			fontname="Arial Bold",
+			fontsize=14,
+			label="Presentation Layer\n(React Components)",
+			lheight=0.47,
+			lp="524,608.4",
+			lwidth=1.60,
+			style=filled
+		];
+		DroneSimulation	[height=0.57778,
+			label="DroneSimulation\n(Physics Loop)",
+			pos="130,558.8",
+			width=1.6597];
+		ControlPanel	[height=0.57778,
+			label="ControlPanel\n(Telemetry & Controls)",
+			pos="286,558.8",
+			width=2.1779];
+		CodeEditor	[height=0.57778,
+			label="CodeEditor\n(Mission Interface)",
+			pos="448,558.8",
+			width=1.8215];
+		MultiDroneController	[height=0.57778,
+			label="MultiDroneController\n(Fleet Management)",
+			pos="604,558.8",
+			width=2.0053];
+		MissionPlanner	[height=0.57778,
+			label="MissionPlanner\n(Waypoint Creation)",
+			pos="764,558.8",
+			width=1.9512];
+		Scene	[height=0.57778,
+			label="Scene\n(3D Visualization)",
+			pos="915,558.8",
+			width=1.746];
+	}
+	subgraph cluster_application {
+		graph [bb="449,316.8,597,500",
+			fillcolor=lightyellow,
+			fontname="Arial Bold",
+			fontsize=14,
+			label="Application Layer\n(State Management)",
+			lheight=0.47,
+			lp="523,479.2",
+			lwidth=1.58,
+			style=filled
+		];
+		Stores	[height=1.7444,
+			label="Zustand Stores\n• useDrone\n• useMultiDrone\n• useEnvironment\n• useCamera\n• useMission\n• useWind",
+			pos="523,387.6",
+			width=1.8434];
+	}
+	subgraph cluster_domain {
+		graph [bb="8,187.6,891,286.8",
+			fillcolor=lightgreen,
+			fontname="Arial Bold",
+			fontsize=14,
+			label="Domain Layer\n(Core Logic)",
+			lheight=0.47,
+			lp="449.5,266",
+			lwidth=1.13,
+			style=filled
+		];
+		DronePhysics	[height=0.57778,
+			label="DronePhysics\n(Rigid Body Dynamics)",
+			pos="95,216.4",
+			width=2.1996];
+		PIDController	[height=0.57778,
+			label="PIDController\n(Stabilization)",
+			pos="243,216.4",
+			width=1.4002];
+		DroneController	[height=0.57778,
+			label="DroneController\n(Autopilot)",
+			pos="369,216.4",
+			width=1.5947];
+		SimpleDroneController	[height=0.57778,
+			label="SimpleDroneController\n(Formation)",
+			pos="523,216.4",
+			width=2.1891];
+		TerrainGenerator	[height=0.57778,
+			label="TerrainGenerator\n(Heightmaps)",
+			pos="681,216.4",
+			width=1.7136];
+		CollisionDetector	[height=0.57778,
+			label="CollisionDetector\n(Obstacles)",
+			pos="822,216.4",
+			width=1.6919];
+	}
+	subgraph cluster_infrastructure {
+		graph [bb="615,8,783,157.6",
+			fillcolor=lightcoral,
+			fontname="Arial Bold",
+			fontsize=14,
+			label="Infrastructure Layer\n(Backend Services)",
+			lheight=0.47,
+			lp="699,136.8",
+			lwidth=1.56,
+			style=filled
+		];
+		ExpressServer	[height=1.2778,
+			label="Express.js Server\n• HTTP/Static Assets\n• WebSocket\n• MSP Protocol\n• USB Serial",
+			pos="699,62",
+			width=2.1238];
+	}
+	DroneSimulation -> Stores	[label=subscribe,
+		lp="256.8,514",
+		pos="e,456.25,417.34 177.01,537.56 243.5,508.93 365.8,456.28 445.75,421.86"];
+	ControlPanel -> Stores	[label=subscribe,
+		lp="370.96,514",
+		pos="e,456.34,436.19 314.12,537.73 346.7,514.47 401.71,475.19 447.11,442.78"];
+	CodeEditor -> Stores	[label=subscribe,
+		lp="489.51,514",
+		pos="e,495.41,450.85 456.9,537.73 465.33,518.7 478.51,488.96 490.89,461.03"];
+	MultiDroneController -> Stores	[label=subscribe,
+		lp="605.82,514",
+		pos="e,552.8,450.85 594.39,537.73 585.28,518.7 571.05,488.96 557.67,461.03"];
+	MissionPlanner -> Stores	[label=subscribe,
+		lp="727.16,514",
+		pos="e,589.78,435.48 735.41,537.73 701.98,514.26 645.31,474.47 598.91,441.89"];
+	Scene -> Stores	[label=subscribe,
+		lp="841.67,514",
+		pos="e,589.58,417.34 868.11,537.56 801.78,508.93 679.8,456.28 600.06,421.86"];
+	Stores -> DronePhysics	[label=invoke,
+		lp="233,300.8",
+		pos="e,116.08,237.59 456.19,374.67 385.73,360.36 272.83,332.4 184,286.8 162.53,275.78 141.11,259.29 124.67,245.15"];
+	Stores -> PIDController	[label=invoke,
+		lp="344.51,300.8",
+		pos="e,256.63,237.43 456.4,364.99 410.54,348.13 349.69,321.7 303,286.8 287.97,275.57 274.07,259.97 263.44,246.41"];
+	Stores -> DroneController	[label=invoke,
+		lp="460.45,300.8",
+		pos="e,387.18,237.38 466.53,324.56 441.93,297.53 414.32,267.2 394.77,245.72"];
+	Stores -> SimpleDroneController	[label=invoke,
+		lp="537.45,300.8",
+		pos="e,523,237.38 523,324.56 523,298.73 523,269.89 523,248.63"];
+	Stores -> TerrainGenerator	[label=invoke,
+		lp="621.19,300.8",
+		pos="e,662.35,237.38 580.94,324.56 606.17,297.53 634.5,267.2 654.56,245.72"];
+	Stores -> CollisionDetector	[label=invoke,
+		lp="749.47,300.8",
+		pos="e,805.24,237.68 589.73,364.97 637.29,347.82 701.48,321.07 752,286.8 768.89,275.34 785.23,259.5 797.87,245.85"];
+	DronePhysics -> ExpressServer	[label="HITL data",
+		lp="275.53,171.6",
+		pos="e,622.25,79.92 158.05,195.15 166.75,192.52 175.58,189.93 184,187.6 333.05,146.34 508.45,105.53 611.3,82.38"];
+	ExpressServer -> Stores	[label="flight controller\nfeedback",
+		lp="945.6,216.4",
+		pos="e,589.79,378.4 775.87,90.222 819.23,110 869.67,141.48 895,187.6 916.22,226.24 921.83,251.82 895,286.8 859.47,333.11 699.39,362.67 \
+601.16,376.79"];
+	User	[fillcolor=white,
+		height=0.5,
+		label=User,
+		pos="448,674.2",
+		shape=ellipse,
+		width=0.87293];
+	User -> DroneSimulation	[pos="e,144.33,579.89 416.17,673.58 366.84,672.91 270.2,666.41 199,629.2 180.42,619.49 163.72,603.02 151.41,588.56",
+		style=dashed];
+	User -> ControlPanel	[pos="e,309.3,579.89 425.5,661.11 410.33,652.69 390.05,640.91 373,629.2 354.05,616.18 333.93,600.28 317.81,586.98",
+		style=dashed];
+	User -> CodeEditor	[pos="e,448,579.87 448,655.98 448,638.8 448,612.04 448,591.1",
+		style=dashed];
+	User -> MultiDroneController	[pos="e,582.52,580.05 470.64,661.3 485.87,652.97 506.16,641.21 523,629.2 540.77,616.53 559.35,600.81 574.22,587.54",
+		style=dashed];
+	User -> MissionPlanner	[pos="e,746.96,579.81 479.56,672.61 526.6,670.59 616.87,662.3 685,629.2 705.45,619.26 724.7,602.57 739.08,588.04",
+		style=dashed];
+}

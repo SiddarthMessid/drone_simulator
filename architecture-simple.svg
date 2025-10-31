@@ -1,0 +1,122 @@
+digraph SimpleArchitecture {
+	graph [bb="0,0,434.35,418",
+		rankdir=TB
+	];
+	node [fontname=Arial,
+		fontsize=12,
+		label="\N",
+		shape=box,
+		style="rounded,filled"
+	];
+	edge [color="#666666",
+		fontname=Arial,
+		fontsize=10
+	];
+	subgraph cluster_0 {
+		graph [bb="8,252,212,344",
+			fillcolor="#E3F2FD",
+			fontname="Arial Bold",
+			fontsize=14,
+			label="Presentation Layer",
+			lheight=0.23,
+			lp="110,331.6",
+			lwidth=1.46,
+			style=filled
+		];
+		UI	[fillcolor="#90CAF9",
+			height=0.71111,
+			label="React UI Components\n(DroneSimulation, ControlPanel,\nCodeEditor, MissionPlanner)",
+			pos="110,285.6",
+			width=2.6123];
+	}
+	subgraph cluster_1 {
+		graph [bb="34,130,244,222",
+			fillcolor="#FFF9C4",
+			fontname="Arial Bold",
+			fontsize=14,
+			label="Application Layer",
+			lheight=0.23,
+			lp="139,209.6",
+			lwidth=1.42,
+			style=filled
+		];
+		State	[fillcolor="#FFF59D",
+			height=0.71111,
+			label="Zustand State Stores\n(Drone, MultiDrone, Environment,\nCamera, Mission, Wind)",
+			pos="139,163.6",
+			width=2.7046];
+	}
+	subgraph cluster_2 {
+		graph [bb="142,8,314,100",
+			fillcolor="#C8E6C9",
+			fontname="Arial Bold",
+			fontsize=14,
+			label="Domain Layer",
+			lheight=0.23,
+			lp="228,87.6",
+			lwidth=1.13,
+			style=filled
+		];
+		Logic	[fillcolor="#A5D6A7",
+			height=0.71111,
+			label="Core Simulation Logic\n(Physics, PID, Controllers,\nTerrain, Collision)",
+			pos="228,41.6",
+			width=2.1671];
+	}
+	subgraph cluster_3 {
+		graph [bb="220,252,400,344",
+			fillcolor="#FFCCBC",
+			fontname="Arial Bold",
+			fontsize=14,
+			label="Infrastructure Layer",
+			lheight=0.23,
+			lp="310,331.6",
+			lwidth=1.56,
+			style=filled
+		];
+		Backend	[fillcolor="#FFAB91",
+			height=0.71111,
+			label="Express.js Server\n(WebSocket, MSP Protocol,\nUSB Serial, HITL)",
+			pos="310,285.6",
+			width=2.2877];
+	}
+	UI -> State	[label="subscribe/dispatch",
+		lp="152.59,236",
+		penwidth=2,
+		pos="e,125.69,189.64 108.56,259.63 108.53,250.25 109.12,239.55 111.18,230 113.23,220.46 116.67,210.58 120.44,201.47"];
+	State -> Logic	[label=invoke,
+		lp="192.62,114",
+		penwidth=2,
+		pos="e,209.58,67.432 157.44,137.74 170.33,120.36 187.72,96.911 202.01,77.642"];
+	Logic -> Backend	[label="HITL data",
+		lp="303.04,163.6",
+		pos="e,297.48,259.67 234.18,67.641 243.1,102.66 260.77,168.05 281.09,222 284.48,231 288.59,240.52 292.63,249.34"];
+	Backend -> State	[label=feedback,
+		lp="237.71,236",
+		pos="e,160.11,189.56 247.6,259.53 237.17,254.32 226.73,248.44 217.41,242 199.4,229.54 181.81,212.74 167.87,197.97"];
+	Hardware	[fillcolor="#FFFFFF",
+		height=0.70278,
+		label="Flight Controller\n(Hardware)",
+		pos="384,163.6",
+		shape=cylinder,
+		style=filled,
+		width=1.3986];
+	Backend -> Hardware	[label="MSP/Serial",
+		lp="335.99,236",
+		pos="e,356.62,189.21 306.29,259.73 305.89,250.06 306.78,239.13 310.99,230 313.23,225.13 316,225.57 320,222 329.12,213.87 338.94,205.07 \
+348.1,196.86"];
+	User	[fillcolor="#FFFFFF",
+		height=0.5,
+		label=User,
+		pos="110,400",
+		shape=ellipse,
+		style=filled,
+		width=0.75];
+	User -> UI	[label=interact,
+		lp="126.4,358",
+		pos="e,110,311.35 110,381.93 110,366.29 110,342.64 110,322.8",
+		style=dashed];
+	Hardware -> Backend	[label=telemetry,
+		lp="387.97,236",
+		pos="e,345.66,259.55 380.48,189.18 377.31,205.22 371.48,226.07 361,242 358.84,245.28 356.36,248.44 353.67,251.46"];
+}

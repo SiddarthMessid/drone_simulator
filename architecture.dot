@@ -1,0 +1,82 @@
+digraph Architecture {
+    rankdir=TB;
+    node [shape=box, style="rounded,filled", fillcolor=lightblue, fontname="Arial"];
+    edge [fontname="Arial", fontsize=10];
+    
+    // Define clusters for each layer
+    subgraph cluster_presentation {
+        label="Presentation Layer\n(React Components)";
+        style=filled;
+        fillcolor=lightgray;
+        fontsize=14;
+        fontname="Arial Bold";
+        
+        DroneSimulation [label="DroneSimulation\n(Physics Loop)"];
+        ControlPanel [label="ControlPanel\n(Telemetry & Controls)"];
+        CodeEditor [label="CodeEditor\n(Mission Interface)"];
+        MultiDroneController [label="MultiDroneController\n(Fleet Management)"];
+        MissionPlanner [label="MissionPlanner\n(Waypoint Creation)"];
+        Scene [label="Scene\n(3D Visualization)"];
+    }
+    
+    subgraph cluster_application {
+        label="Application Layer\n(State Management)";
+        style=filled;
+        fillcolor=lightyellow;
+        fontsize=14;
+        fontname="Arial Bold";
+        
+        Stores [label="Zustand Stores\n• useDrone\n• useMultiDrone\n• useEnvironment\n• useCamera\n• useMission\n• useWind", shape=box];
+    }
+    
+    subgraph cluster_domain {
+        label="Domain Layer\n(Core Logic)";
+        style=filled;
+        fillcolor=lightgreen;
+        fontsize=14;
+        fontname="Arial Bold";
+        
+        DronePhysics [label="DronePhysics\n(Rigid Body Dynamics)"];
+        PIDController [label="PIDController\n(Stabilization)"];
+        DroneController [label="DroneController\n(Autopilot)"];
+        SimpleDroneController [label="SimpleDroneController\n(Formation)"];
+        TerrainGenerator [label="TerrainGenerator\n(Heightmaps)"];
+        CollisionDetector [label="CollisionDetector\n(Obstacles)"];
+    }
+    
+    subgraph cluster_infrastructure {
+        label="Infrastructure Layer\n(Backend Services)";
+        style=filled;
+        fillcolor=lightcoral;
+        fontsize=14;
+        fontname="Arial Bold";
+        
+        ExpressServer [label="Express.js Server\n• HTTP/Static Assets\n• WebSocket\n• MSP Protocol\n• USB Serial"];
+    }
+    
+    // Connections between layers
+    DroneSimulation -> Stores [label="subscribe"];
+    ControlPanel -> Stores [label="subscribe"];
+    CodeEditor -> Stores [label="subscribe"];
+    MultiDroneController -> Stores [label="subscribe"];
+    MissionPlanner -> Stores [label="subscribe"];
+    Scene -> Stores [label="subscribe"];
+    
+    Stores -> DronePhysics [label="invoke"];
+    Stores -> PIDController [label="invoke"];
+    Stores -> DroneController [label="invoke"];
+    Stores -> SimpleDroneController [label="invoke"];
+    Stores -> TerrainGenerator [label="invoke"];
+    Stores -> CollisionDetector [label="invoke"];
+    
+    DronePhysics -> ExpressServer [label="HITL data"];
+    ExpressServer -> Stores [label="flight controller\nfeedback"];
+    
+    // User interaction
+    User [shape=ellipse, fillcolor=white, label="User"];
+    User -> DroneSimulation [style=dashed];
+    User -> ControlPanel [style=dashed];
+    User -> CodeEditor [style=dashed];
+    User -> MultiDroneController [style=dashed];
+    User -> MissionPlanner [style=dashed];
+}

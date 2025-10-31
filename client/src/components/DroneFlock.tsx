@@ -2,7 +2,7 @@ import { useRef, useEffect } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { useMultiDrone } from "../lib/stores/useMultiDrone";
-import DroneModel from "./DroneModel";
+import DroneModelSwitcher from "./DroneModelSwitcher";
 import { PIDController } from "../lib/pidController";
 import { DronePhysics } from "../lib/dronePhysics";
 import { useWind } from "../lib/stores/useWind";
@@ -29,17 +29,20 @@ export default function DroneFlock() {
   // Initialize physics and controllers for each drone
   // Use array of drone IDs as dependency to detect when drones are added/removed
   const droneIds = Array.from(drones.keys());
-  
+
   useEffect(() => {
     drones.forEach((droneController, id) => {
       if (!pidControllers.current.has(id)) {
         console.log(`Initializing PID controller for drone ${id}`);
-        pidControllers.current.set(id, new PIDController(droneController.getPIDParams()));
+        pidControllers.current.set(
+          id,
+          new PIDController(droneController.getPIDParams())
+        );
       }
       if (!dronePhysics.current.has(id)) {
         console.log(`Initializing physics for drone ${id}`);
         dronePhysics.current.set(id, new DronePhysics());
-        
+
         // Initialize drone state with its stored position
         const initialPos = dronePositions.get(id);
         if (initialPos) {
@@ -47,14 +50,14 @@ export default function DroneFlock() {
             position: initialPos.clone(),
             rotation: new THREE.Vector3(0, 0, 0),
             velocity: new THREE.Vector3(0, 0, 0),
-            angularVelocity: new THREE.Vector3(0, 0, 0)
+            angularVelocity: new THREE.Vector3(0, 0, 0),
           };
           droneController.updateState(initialState);
           console.log(`Initialized drone ${id} at position:`, initialPos);
         }
       }
     });
-    
+
     // Clean up removed drones
     pidControllers.current.forEach((_, id) => {
       if (!drones.has(id)) {
@@ -62,18 +65,18 @@ export default function DroneFlock() {
         pidControllers.current.delete(id);
       }
     });
-    
+
     dronePhysics.current.forEach((_, id) => {
       if (!drones.has(id)) {
         console.log(`Removing physics for drone ${id}`);
         dronePhysics.current.delete(id);
       }
     });
-  }, [droneIds.length, droneIds.join(','), drones, dronePositions]);
+  }, [droneIds.length, droneIds.join(","), drones, dronePositions]);
 
   useFrame((state, delta) => {
     const obstacleAABBs = getObstacleAABBs();
-    
+
     // Update all fleet drones to follow the main drone continuously
     updateMainDroneFormation();
 
@@ -88,21 +91,21 @@ export default function DroneFlock() {
 
       const droneState = droneController.getState();
       const setpoints = droneController.getSetpoints();
-      
+
       // Debug logging for first frame only
       if (state.clock.elapsedTime < 0.1) {
         console.log(`Drone ${id} setpoints:`, setpoints);
         console.log(`Drone ${id} position:`, droneState.position);
       }
-      
+
       // Convert DroneState to PIDState
       const pidState = {
         pitch: droneState.rotation.x,
         roll: droneState.rotation.z,
         yaw: droneState.rotation.y,
-        altitude: droneState.position.y
+        altitude: droneState.position.y,
       };
-      
+
       const pidOutputs = pidController.update(pidState, setpoints, delta);
 
       // Get wind forces at current drone position
@@ -110,7 +113,11 @@ export default function DroneFlock() {
         droneState.position,
         state.clock.elapsedTime
       );
-      const wind = new THREE.Vector3(windAtPosition.x, windAtPosition.y, windAtPosition.z);
+      const wind = new THREE.Vector3(
+        windAtPosition.x,
+        windAtPosition.y,
+        windAtPosition.z
+      );
 
       // Update physics with collision detection
       const { newState, collision } = physics.update(
@@ -132,7 +139,11 @@ export default function DroneFlock() {
 
       // Update drone model position and rotation
       droneRef.position.copy(newState.position);
-      droneRef.rotation.set(newState.rotation.x, newState.rotation.y, newState.rotation.z);
+      droneRef.rotation.set(
+        newState.rotation.x,
+        newState.rotation.y,
+        newState.rotation.z
+      );
 
       // Update stored position for formation/swarm calculations
       updateDronePosition(id, newState.position);
@@ -144,14 +155,14 @@ export default function DroneFlock() {
       {Array.from(drones.keys()).map((id) => {
         const position = dronePositions.get(id);
         if (!position) return null;
-        
+
         return (
           <group
             key={id}
             ref={(el) => el && droneRefs.current.set(id, el)}
             position={[position.x, position.y, position.z]}
           >
-            <DroneModel color={droneColors.get(id) || "#2a2a2a"} />
+            <DroneModelSwitcher color={droneColors.get(id) || "#2a2a2a"} />
           </group>
         );
       })}

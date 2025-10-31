@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1200" height="800" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .title { font: bold 18px Arial; fill: #333; }
+      .axis-label { font: 14px Arial; fill: #666; }
+      .tick-label { font: 12px Arial; fill: #666; }
+      .grid-line { stroke: #e0e0e0; stroke-width: 1; }
+      .axis-line { stroke: #333; stroke-width: 2; }
+      .legend-text { font: 12px Arial; fill: #333; }
+    </style>
+  </defs>
+  <rect width="1200" height="800" fill="white"/>
+  <text x="600" y="30" class="title" text-anchor="middle">PID Gain Effects Comparison</text>
+<text x="615" y="50" class="axis-label" text-anchor="middle">Kp Effect on Overshoot</text>
+<line x1="80" y1="60" x2="80" y2="266.66666666666663" class="grid-line"/>
+<line x1="213.75" y1="60" x2="213.75" y2="266.66666666666663" class="grid-line"/>
+<line x1="347.5" y1="60" x2="347.5" y2="266.66666666666663" class="grid-line"/>
+<line x1="481.25" y1="60" x2="481.25" y2="266.66666666666663" class="grid-line"/>
+<line x1="615" y1="60" x2="615" y2="266.66666666666663" class="grid-line"/>
+<line x1="748.75" y1="60" x2="748.75" y2="266.66666666666663" class="grid-line"/>
+<line x1="882.5" y1="60" x2="882.5" y2="266.66666666666663" class="grid-line"/>
+<line x1="1016.25" y1="60" x2="1016.25" y2="266.66666666666663" class="grid-line"/>
+<line x1="1150" y1="60" x2="1150" y2="266.66666666666663" class="grid-line"/>
+<line x1="80" y1="60" x2="1150" y2="60" class="grid-line"/>
+<line x1="80" y1="101.33333333333333" x2="1150" y2="101.33333333333333" class="grid-line"/>
+<line x1="80" y1="142.66666666666666" x2="1150" y2="142.66666666666666" class="grid-line"/>
+<line x1="80" y1="184" x2="1150" y2="184" class="grid-line"/>
+<line x1="80" y1="225.33333333333331" x2="1150" y2="225.33333333333331" class="grid-line"/>
+<line x1="80" y1="266.66666666666663" x2="1150" y2="266.66666666666663" class="grid-line"/>
+<line x1="80" y1="266.66666666666663" x2="1150" y2="266.66666666666663" class="axis-line"/>
+<text x="615" y="306.66666666666663" class="axis-label" text-anchor="middle">Kp</text>
+<line x1="80" y1="60" x2="80" y2="266.66666666666663" class="axis-line"/>
+<text x="30" y="163.33333333333331" class="axis-label" text-anchor="middle" transform="rotate(-90, 30, 163.33333333333331)">Overshoot (%)</text>
+<path d="M 80 211.9479908084008 L 198.8888888888889 166.85349430838744 L 317.77777777777777 140.8373843410192 L 436.6666666666667 122.66898200106931 L 555.5555555555557 108.91437741183009 L 674.4444444444445 97.9663545114415 L 912.2222222222223 81.33254101614367 L 1150 69.04499991577063" stroke="#F44336" stroke-width="3" fill="none"/>
+<text x="615" y="276.66666666666663" class="axis-label" text-anchor="middle">Kd Effect on Overshoot</text>
+<line x1="80" y1="286.66666666666663" x2="80" y2="493.33333333333326" class="grid-line"/>
+<line x1="213.75" y1="286.66666666666663" x2="213.75" y2="493.33333333333326" class="grid-line"/>
+<line x1="347.5" y1="286.66666666666663" x2="347.5" y2="493.33333333333326" class="grid-line"/>
+<line x1="481.25" y1="286.66666666666663" x2="481.25" y2="493.33333333333326" class="grid-line"/>
+<line x1="615" y1="286.66666666666663" x2="615" y2="493.33333333333326" class="grid-line"/>
+<line x1="748.75" y1="286.66666666666663" x2="748.75" y2="493.33333333333326" class="grid-line"/>
+<line x1="882.5" y1="286.66666666666663" x2="882.5" y2="493.33333333333326" class="grid-line"/>
+<line x1="1016.25" y1="286.66666666666663" x2="1016.25" y2="493.33333333333326" class="grid-line"/>
+<line x1="1150" y1="286.66666666666663" x2="1150" y2="493.33333333333326" class="grid-line"/>
+<line x1="80" y1="286.66666666666663" x2="1150" y2="286.66666666666663" class="grid-line"/>
+<line x1="80" y1="327.99999999999994" x2="1150" y2="327.99999999999994" class="grid-line"/>
+<line x1="80" y1="369.33333333333326" x2="1150" y2="369.33333333333326" class="grid-line"/>
+<line x1="80" y1="410.66666666666663" x2="1150" y2="410.66666666666663" class="grid-line"/>
+<line x1="80" y1="451.99999999999994" x2="1150" y2="451.99999999999994" class="grid-line"/>
+<line x1="80" y1="493.33333333333326" x2="1150" y2="493.33333333333326" class="grid-line"/>
+<line x1="80" y1="493.33333333333326" x2="1150" y2="493.33333333333326" class="axis-line"/>
+<text x="615" y="533.3333333333333" class="axis-label" text-anchor="middle">Kd</text>
+<line x1="80" y1="286.66666666666663" x2="80" y2="493.33333333333326" class="axis-line"/>
+<text x="30" y="389.99999999999994" class="axis-label" text-anchor="middle" transform="rotate(-90, 30, 389.99999999999994)">Overshoot (%)</text>
+<path d="M 80 251.46615535357688 L 151.33333333333331 301.31257306312403 L 222.66666666666666 338.7906390059133 L 294 367.5040510076858 L 436.66666666666663 407.53465332538855 L 579.3333333333333 433.1170880018016 L 793.3333333333333 456.6145761972946 L 1150 476.5079138834075" stroke="#2196F3" stroke-width="3" fill="none"/>
+<text x="615" y="503.33333333333326" class="axis-label" text-anchor="middle">Ki Effect on Overshoot</text>
+<line x1="80" y1="513.3333333333333" x2="80" y2="719.9999999999999" class="grid-line"/>
+<line x1="213.75" y1="513.3333333333333" x2="213.75" y2="719.9999999999999" class="grid-line"/>
+<line x1="347.5" y1="513.3333333333333" x2="347.5" y2="719.9999999999999" class="grid-line"/>
+<line x1="481.25" y1="513.3333333333333" x2="481.25" y2="719.9999999999999" class="grid-line"/>
+<line x1="615" y1="513.3333333333333" x2="615" y2="719.9999999999999" class="grid-line"/>
+<line x1="748.75" y1="513.3333333333333" x2="748.75" y2="719.9999999999999" class="grid-line"/>
+<line x1="882.5" y1="513.3333333333333" x2="882.5" y2="719.9999999999999" class="grid-line"/>
+<line x1="1016.25" y1="513.3333333333333" x2="1016.25" y2="719.9999999999999" class="grid-line"/>
+<line x1="1150" y1="513.3333333333333" x2="1150" y2="719.9999999999999" class="grid-line"/>
+<line x1="80" y1="513.3333333333333" x2="1150" y2="513.3333333333333" class="grid-line"/>
+<line x1="80" y1="554.6666666666666" x2="1150" y2="554.6666666666666" class="grid-line"/>
+<line x1="80" y1="595.9999999999999" x2="1150" y2="595.9999999999999" class="grid-line"/>
+<line x1="80" y1="637.3333333333333" x2="1150" y2="637.3333333333333" class="grid-line"/>
+<line x1="80" y1="678.6666666666665" x2="1150" y2="678.6666666666665" class="grid-line"/>
+<line x1="80" y1="719.9999999999999" x2="1150" y2="719.9999999999999" class="grid-line"/>
+<line x1="80" y1="719.9999999999999" x2="1150" y2="719.9999999999999" class="axis-line"/>
+<text x="615" y="759.9999999999999" class="axis-label" text-anchor="middle">Ki</text>
+<line x1="80" y1="513.3333333333333" x2="80" y2="719.9999999999999" class="axis-line"/>
+<text x="30" y="616.6666666666666" class="axis-label" text-anchor="middle" transform="rotate(-90, 30, 616.6666666666666)">Overshoot (%)</text>
+<path d="M 80 644.5024306046114 L 133.5 636.86793334456 L 187 629.4667122208306 L 347.5 608.6662452507364 L 615 578.1823693977117 L 882.4999999999999 551.8210013219989 L 1150 528.5523250599107" stroke="#4CAF50" stroke-width="3" fill="none"/>
+</svg>

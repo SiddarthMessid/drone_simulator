@@ -1,4 +1,3 @@
-import React from "react";
 import { Button } from "./ui/button";
 import { useMultiDrone } from "../lib/stores/useMultiDrone.simple";
 import {

@@ -1,0 +1,105 @@
+digraph HorizontalArchitecture {
+    rankdir=LR;
+    node [shape=box, style="rounded,filled", fontname="Arial", fontsize=11];
+    edge [fontname="Arial", fontsize=9];
+    
+    subgraph cluster_presentation {
+        label="Presentation\nLayer";
+        style=filled;
+        fillcolor="#E3F2FD";
+        fontsize=12;
+        fontname="Arial Bold";
+        
+        node [fillcolor="#90CAF9"];
+        DroneSimulation [label="Drone\nSimulation"];
+        ControlPanel [label="Control\nPanel"];
+        CodeEditor [label="Code\nEditor"];
+        MultiDrone [label="Multi-Drone\nController"];
+        MissionPlanner [label="Mission\nPlanner"];
+        Scene [label="3D\nScene"];
+    }
+    
+    subgraph cluster_application {
+        label="Application\nLayer";
+        style=filled;
+        fillcolor="#FFF9C4";
+        fontsize=12;
+        fontname="Arial Bold";
+        
+        node [fillcolor="#FFF59D"];
+        StoresDrone [label="Drone\nStore"];
+        StoresMulti [label="MultiDrone\nStore"];
+        StoresEnv [label="Environment\nStore"];
+        StoresMission [label="Mission\nStore"];
+    }
+    
+    subgraph cluster_domain {
+        label="Domain\nLayer";
+        style=filled;
+        fillcolor="#C8E6C9";
+        fontsize=12;
+        fontname="Arial Bold";
+        
+        node [fillcolor="#A5D6A7"];
+        Physics [label="Drone\nPhysics"];
+        PID [label="PID\nController"];
+        Controller [label="Drone\nController"];
+        Terrain [label="Terrain\nGenerator"];
+        Collision [label="Collision\nDetector"];
+    }
+    
+    subgraph cluster_infrastructure {
+        label="Infrastructure\nLayer";
+        style=filled;
+        fillcolor="#FFCCBC";
+        fontsize=12;
+        fontname="Arial Bold";
+        
+        node [fillcolor="#FFAB91"];
+        Express [label="Express\nServer"];
+        WebSocket [label="WebSocket"];
+        MSP [label="MSP\nProtocol"];
+        Serial [label="USB\nSerial"];
+    }
+    
+    // External entities
+    User [shape=ellipse, fillcolor="#FFFFFF", label="User", style=filled];
+    FlightController [shape=cylinder, fillcolor="#FFFFFF", label="Flight\nController", style=filled];
+    
+    // Connections - Presentation to Application
+    DroneSimulation -> StoresDrone;
+    ControlPanel -> StoresDrone;
+    CodeEditor -> StoresMission;
+    MultiDrone -> StoresMulti;
+    MissionPlanner -> StoresMission;
+    Scene -> StoresEnv;
+    
+    // Application to Domain
+    StoresDrone -> Physics;
+    StoresDrone -> PID;
+    StoresDrone -> Controller;
+    StoresMulti -> Controller;
+    StoresEnv -> Terrain;
+    StoresEnv -> Collision;
+    
+    // Domain to Infrastructure
+    Physics -> Express;
+    Controller -> Express;
+    
+    // Infrastructure chain
+    Express -> WebSocket;
+    WebSocket -> MSP;
+    MSP -> Serial;
+    Serial -> FlightController;
+    
+    // Feedback
+    FlightController -> Serial [dir=back];
+    Serial -> MSP [dir=back];
+    MSP -> WebSocket [dir=back];
+    WebSocket -> StoresDrone [dir=back, label="feedback"];
+    
+    // User interaction
+    User -> DroneSimulation [style=dashed];
+    User -> ControlPanel [style=dashed];
+    User -> CodeEditor [style=dashed];
+}

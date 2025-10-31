@@ -1,17 +1,26 @@
 import ModularTerrainEnvironment from "./ModularTerrainEnvironment";
+import InteractiveObstacle from "./InteractiveObstacle";
 import { useEnvironment } from "../lib/stores/useEnvironment";
+import { useEnvironmentEditor } from "../lib/stores/useEnvironmentEditor";
 import { useTerrainConfigStore } from "../lib/hooks/useTerrainConfig";
 
 export default function Environment() {
-  const { getAllObstacles } = useEnvironment();
+  const { getAllObstacles, updateObstacle } = useEnvironment();
   const allObstacles = getAllObstacles();
   const { isFlat } = useTerrainConfigStore();
+
+  const {
+    selectedObstacleId,
+    transformMode,
+    enabledAxes,
+    setSelectedObstacleId,
+  } = useEnvironmentEditor();
 
   return (
     <>
       <ModularTerrainEnvironment />
 
-      {/* Only show landing pad and obstacles in flat terrain mode */}
+      {/* Landing Pad - only in flat terrain mode */}
       {isFlat && (
         <>
           {/* Target Landing Pad */}
@@ -33,27 +42,34 @@ export default function Environment() {
             <circleGeometry args={[0.5, 16]} />
             <meshPhongMaterial color="#ff4400" />
           </mesh>
-
-          {/* All Obstacles (Default + User-Added) */}
-          {allObstacles.map((obstacle) => (
-            <mesh
-              key={obstacle.id}
-              position={[
-                obstacle.position.x,
-                obstacle.position.y,
-                obstacle.position.z,
-              ]}
-              castShadow
-              receiveShadow
-            >
-              <boxGeometry
-                args={[obstacle.size.x, obstacle.size.y, obstacle.size.z]}
-              />
-              <meshPhongMaterial color={obstacle.color} />
-            </mesh>
-          ))}
         </>
       )}
+
+      {/* All Obstacles (Default + User-Added) - Interactive - Show in all terrain modes */}
+      {allObstacles.map((obstacle) => (
+        <InteractiveObstacle
+          key={obstacle.id}
+          obstacle={obstacle}
+          isSelected={selectedObstacleId === obstacle.id}
+          onSelect={() => setSelectedObstacleId(obstacle.id)}
+          onTransform={(position, rotation) => {
+            console.log("Updating obstacle:", obstacle.id, {
+              position: { x: position.x, y: position.y, z: position.z },
+              rotation: {
+                x: (rotation.x * 180) / Math.PI,
+                y: (rotation.y * 180) / Math.PI,
+                z: (rotation.z * 180) / Math.PI,
+              },
+            });
+            updateObstacle(obstacle.id, {
+              position: { x: position.x, y: position.y, z: position.z },
+              rotation: { x: rotation.x, y: rotation.y, z: rotation.z },
+            });
+          }}
+          transformMode={transformMode}
+          enabledAxes={enabledAxes}
+        />
+      ))}
     </>
   );
 }

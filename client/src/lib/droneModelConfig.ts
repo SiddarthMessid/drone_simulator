@@ -18,11 +18,11 @@ export interface DroneModelConfig {
 
 export const droneModelConfig: DroneModelConfig = {
   // Change this to 'gltf' to use your GLTF/GLB model
-  type: 'procedural', // 'procedural' or 'gltf'
+  type: 'gltf', // 'procedural' or 'gltf'
 
   // GLTF/GLB model settings (GLB is binary GLTF - single file)
-  gltfPath: '/models/drone/drone_gltf.glb',
-  scale: 50, // Much larger scale - the model is very small
+  gltfPath: '/models/drone/scene.gltf',
+  scale: 0.15, // Adjust this if the model appears too small or large
   propellerAxis: 'y', // Most drone models use Y-axis for propeller rotation
 
   // Leave empty to auto-detect propellers, or specify names manually

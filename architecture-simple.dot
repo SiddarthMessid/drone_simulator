@@ -1,0 +1,59 @@
+digraph SimpleArchitecture {
+    rankdir=TB;
+    node [shape=box, style="rounded,filled", fontname="Arial", fontsize=12];
+    edge [fontname="Arial", fontsize=10, color="#666666"];
+    
+    // Simplified view with main components only
+    subgraph cluster_0 {
+        label="Presentation Layer";
+        style=filled;
+        fillcolor="#E3F2FD";
+        fontsize=14;
+        fontname="Arial Bold";
+        
+        UI [label="React UI Components\n(DroneSimulation, ControlPanel,\nCodeEditor, MissionPlanner)", fillcolor="#90CAF9"];
+    }
+    
+    subgraph cluster_1 {
+        label="Application Layer";
+        style=filled;
+        fillcolor="#FFF9C4";
+        fontsize=14;
+        fontname="Arial Bold";
+        
+        State [label="Zustand State Stores\n(Drone, MultiDrone, Environment,\nCamera, Mission, Wind)", fillcolor="#FFF59D"];
+    }
+    
+    subgraph cluster_2 {
+        label="Domain Layer";
+        style=filled;
+        fillcolor="#C8E6C9";
+        fontsize=14;
+        fontname="Arial Bold";
+        
+        Logic [label="Core Simulation Logic\n(Physics, PID, Controllers,\nTerrain, Collision)", fillcolor="#A5D6A7"];
+    }
+    
+    subgraph cluster_3 {
+        label="Infrastructure Layer";
+        style=filled;
+        fillcolor="#FFCCBC";
+        fontsize=14;
+        fontname="Arial Bold";
+        
+        Backend [label="Express.js Server\n(WebSocket, MSP Protocol,\nUSB Serial, HITL)", fillcolor="#FFAB91"];
+    }
+    
+    // External
+    User [shape=ellipse, fillcolor="#FFFFFF", label="User", style=filled];
+    Hardware [shape=cylinder, fillcolor="#FFFFFF", label="Flight Controller\n(Hardware)", style=filled];
+    
+    // Connections
+    User -> UI [label="interact", style=dashed];
+    UI -> State [label="subscribe/dispatch", penwidth=2];
+    State -> Logic [label="invoke", penwidth=2];
+    Logic -> Backend [label="HITL data"];
+    Backend -> Hardware [label="MSP/Serial"];
+    Hardware -> Backend [label="telemetry"];
+    Backend -> State [label="feedback"];
+}
