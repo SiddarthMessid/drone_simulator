@@ -83,14 +83,7 @@ executeDroneCommands();`;
           }
         }
 
-        if (useDrone) {
-          const droneStore = useDrone.getState();
-          // Only enable position hold if not already enabled
-          // User can manually toggle it via the Control Panel
-          if (!droneStore.positionHoldEnabled) {
-            droneStore.enablePositionHold(true);
-          }
-        }
+        // Position hold removed - not needed for custom library execution
 
         executeFunction((window as any).drone, console, THREE);
         console.log("✅ Drone commands executed successfully");

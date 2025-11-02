@@ -284,67 +284,26 @@ export const useMultiDrone = create<{
   // Swarm behaviors
   swarmBehavior: async (behavior: 'follow' | 'scatter' | 'gather') => {
     const { state } = get();
-    const { drones, activeDroneId, dronePositions } = state;
 
-    if (drones.size < 2) {
-      console.log('Swarm behavior requires at least 2 drones');
+    if (state.drones.size < 1) {
+      console.log('Swarm behavior requires at least 1 drone');
       return;
     }
 
-    console.log(`Activating ${behavior} swarm behavior with ${drones.size} drones`);
+    console.log(`Activating ${behavior} swarm behavior with ${state.drones.size} drones`);
 
-    // For now only 'follow' behavior is supported through the UI.
     switch (behavior) {
       case 'follow':
-        // Set up continuous follow formation - drones follow leader in a line
-        if (!activeDroneId) {
-          console.log('No active drone set as leader');
-          return;
-        }
-
-        const leaderPos = dronePositions.get(activeDroneId);
-        if (!leaderPos) {
-          console.error('Leader position not found');
-          return;
-        }
-
-        const leader = drones.get(activeDroneId);
-        if (leader) {
-          leader.setAsLeader(true);
-          console.log(`Setting ${activeDroneId} as leader for follow mode at:`, leaderPos);
-        }
-
-        // Set up follow positions behind the leader
-        const followSpacing = 5;
-        let followerIndex = 0;
-
-        drones.forEach((drone, id) => {
-          if (id !== activeDroneId) {
-            drone.setAsLeader(false);
-            // Position drones in a line behind the leader
-            const followOffset = new THREE.Vector3(
-              0,
-              0,
-              -(followerIndex + 1) * followSpacing
-            );
-            drone.setFormationTarget(followOffset);
-            // Update leader position immediately
-            const leaderState = leader?.getState();
-            if (leaderState) {
-              drone.updateLeaderPosition(leaderPos, leaderState.rotation);
-            }
-            console.log(`Drone ${id} set to follow at offset:`, followOffset);
-            followerIndex++;
-          }
-        });
+        // Use triangle formation for follow behavior
+        get().formationFlight('triangle');
         break;
-
       case 'scatter':
-        console.log('Scatter behavior is currently disabled in the simplified UI');
+        // Scatter: use circle formation with larger spacing
+        get().formationFlight('circle');
         break;
-
       case 'gather':
-        console.log('Gather behavior is currently disabled in the simplified UI');
+        // Gather: use tight line formation
+        get().formationFlight('line');
         break;
     }
   },

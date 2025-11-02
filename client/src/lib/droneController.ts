@@ -309,6 +309,11 @@ export class DroneController {
             console.log(`[MoveTo] Current heading: ${(droneStore.rotation.y * 180 / Math.PI).toFixed(1)}°`);
             console.log(`[MoveTo] ========================================`);
 
+            // Calculate distance to determine appropriate timeout
+            const distance = droneStore.position.distanceTo(targetPosition);
+            const estimatedTime = (distance / (options.speed || 5.0)) * 1000; // Convert to ms
+            const safeTimeout = Math.max(estimatedTime * 2, 60000); // At least 60 seconds, or 2x estimated time
+
             const command: DroneCommand = {
                 id: `moveTo_${Date.now()}`,
                 type: 'moveTo',
@@ -316,7 +321,7 @@ export class DroneController {
                 parameters: { targetPosition, speed: options.speed || 5.0 },
                 resolve,
                 reject,
-                timeout: options.timeout || this.config.commandTimeout
+                timeout: options.timeout || safeTimeout
             };
 
             this.targets.position = targetPosition.clone();
@@ -596,10 +601,7 @@ export class DroneController {
             setpoints.pitch = Math.max(-maxTilt, Math.min(maxTilt, setpoints.pitch));
             setpoints.roll = Math.max(-maxTilt, Math.min(maxTilt, setpoints.roll));
 
-            // Debug
-            if (Math.random() < 0.05) {
-                console.log(`[MoveTo] Dist: ${distance.toFixed(2)}m, Speed: ${totalSpeed.toFixed(2)}m/s, Pitch: ${setpoints.pitch.toFixed(2)}, Roll: ${setpoints.roll.toFixed(2)}`);
-            }
+            // Debug logging removed to reduce console spam
         } else {
             setpoints.pitch = 0;
             setpoints.roll = 0;
@@ -677,9 +679,7 @@ export class DroneController {
                     const speed = droneStore.velocity.length();
                     const elapsedTime = Date.now() - this.currentCommand.startTime;
 
-                    if (Math.random() < 0.1) {
-                        console.log(`[MoveTo] Dist: ${distance.toFixed(2)}m, Speed: ${speed.toFixed(2)}m/s`);
-                    }
+                    // Debug logging removed to reduce console spam
 
                     // Complete when close and slow, OR after reasonable time
                     isComplete = (distance < 1.5 && speed < 0.8) || (distance < 0.5);

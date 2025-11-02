@@ -289,8 +289,22 @@ export const useMultiDrone = create<{
     },
 
     swarmBehavior: async (behavior: 'follow' | 'scatter' | 'gather') => {
-        // Just use formation flight for now
-        get().formationFlight('line');
+        const { state } = get();
+
+        switch (behavior) {
+            case 'follow':
+                // Use current formation for follow behavior
+                get().formationFlight(state.currentFormation);
+                break;
+            case 'scatter':
+                // Scatter: use circle formation with larger spacing
+                get().formationFlight('circle');
+                break;
+            case 'gather':
+                // Gather: use tight circle formation
+                get().formationFlight('circle');
+                break;
+        }
     },
 
     emergencyLandAll: async () => {
