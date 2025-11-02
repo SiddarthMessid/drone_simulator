@@ -1166,6 +1166,60 @@ export class DroneController {
 
         return false; // Timeout
     }
+
+    /**
+     * Execute corridor scan mission
+     * Flies through waypoints in order, stopping and yawing at each point
+     * @param waypoints - Array of waypoint positions
+     * @param altitude - Flight altitude (default: 5m)
+     */
+    async executeCorridorScan(waypoints: THREE.Vector3[], altitude: number = 5): Promise<void> {
+        console.log(`[CORRIDOR SCAN] Starting with ${waypoints.length} waypoints at ${altitude}m altitude`);
+
+        try {
+            // 1. Takeoff to altitude
+            console.log(`[CORRIDOR SCAN] Step 1: Taking off to ${altitude}m...`);
+            await this.takeoff(altitude);
+            console.log(`[CORRIDOR SCAN] ✓ Takeoff complete`);
+
+            // 2. Visit each waypoint in order
+            for (let i = 0; i < waypoints.length; i++) {
+                const waypoint = waypoints[i];
+                const waypointAtAltitude = new THREE.Vector3(waypoint.x, altitude, waypoint.z);
+
+                console.log(`[CORRIDOR SCAN] Step ${i + 2}: Moving to waypoint ${i + 1}/${waypoints.length} at (${waypoint.x.toFixed(1)}, ${waypoint.z.toFixed(1)})...`);
+
+                // Move to waypoint
+                await this.moveTo(waypointAtAltitude);
+                console.log(`[CORRIDOR SCAN] ✓ Reached waypoint ${i + 1}`);
+
+                // Hover briefly at waypoint
+                await this.delay(0.5);
+
+                // If not the last waypoint, yaw to face next waypoint
+                if (i < waypoints.length - 1) {
+                    const nextWaypoint = waypoints[i + 1];
+                    const dx = nextWaypoint.x - waypoint.x;
+                    const dz = nextWaypoint.z - waypoint.z;
+                    const targetYaw = Math.atan2(-dx, -dz);
+                    const targetYawDeg = (targetYaw * 180 / Math.PI).toFixed(1);
+
+                    console.log(`[CORRIDOR SCAN] Yawing to face waypoint ${i + 2} (${targetYawDeg}°)...`);
+                    await this.setYaw(targetYaw * 180 / Math.PI);
+                    console.log(`[CORRIDOR SCAN] ✓ Yaw aligned`);
+                }
+            }
+
+            // 3. Land at final waypoint
+            console.log(`[CORRIDOR SCAN] Final step: Landing...`);
+            await this.land();
+            console.log(`[CORRIDOR SCAN] ✓ Mission complete!`);
+
+        } catch (error) {
+            console.error(`[CORRIDOR SCAN] ❌ Mission failed:`, error);
+            throw error;
+        }
+    }
 }
 
 // Export singleton

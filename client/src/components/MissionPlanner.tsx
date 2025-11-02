@@ -174,7 +174,16 @@ export default function MissionPlanner() {
             ? `(${targetPoint.x.toFixed(1)}, ${targetPoint.z.toFixed(1)})`
             : "—"}
         </div>
-        <div>Scan: {scanPattern ? scanPattern.type : "—"}</div>
+        <div>
+          Scan:{" "}
+          {scanPattern
+            ? scanPattern.type === "corridor"
+              ? `Corridor (${scanPattern.waypoints.length} points)`
+              : scanPattern.type === "structure"
+              ? `Structure (r=${scanPattern.radius}m)`
+              : scanPattern.type
+            : "—"}
+        </div>
       </div>
 
       {startPoint && targetPoint && (

@@ -288,6 +288,31 @@ export default function ControlPanel() {
             >
               🚁 Full Mission
             </Button>
+            <Button
+              size="sm"
+              onClick={async () => {
+                const { drone } = await import("../lib/droneController");
+                const { useMission } = await import("../lib/stores/useMission");
+
+                try {
+                  const { scanPattern } = useMission.getState();
+
+                  if (!scanPattern || scanPattern.type !== "corridor") {
+                    console.error(
+                      "[CORRIDOR] No corridor scan defined! Add waypoints first."
+                    );
+                    return;
+                  }
+
+                  await drone.executeCorridorScan(scanPattern.waypoints, 5);
+                } catch (error) {
+                  console.error(`[CORRIDOR] Failed:`, error);
+                }
+              }}
+              variant="default"
+            >
+              📍 Run Corridor
+            </Button>
           </div>
         </div>
       )}
