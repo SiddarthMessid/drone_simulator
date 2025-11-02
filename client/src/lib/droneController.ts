@@ -169,6 +169,39 @@ export class DroneController {
         });
     }
 
+    async brake(): Promise<void> {
+        return new Promise((resolve, reject) => {
+            this.cancelCurrentCommand();
+            this.isAutopilot = true;
+
+            const droneStore = useDrone.getState();
+
+            const command: DroneCommand = {
+                id: `brake_${Date.now()}`,
+                type: 'brake',
+                parameters: { initialSpeed: droneStore.velocity.length() },
+                resolve,
+                reject,
+                startTime: Date.now(),
+                timeout: 6000, // 6 seconds max
+            };
+
+            // CLEAR ALL TARGETS - brake mode uses pure velocity damping
+            this.targets = {
+                altitude: droneStore.position.y,
+                heading: droneStore.rotation.y,
+                // Explicitly clear position and angle targets
+                position: undefined,
+                pitch: undefined,
+                roll: undefined,
+                throttle: undefined,
+            };
+
+            this.executeCommand(command);
+            console.log(`[BRAKE] Initiated! Speed: ${droneStore.velocity.length().toFixed(2)} m/s, Pitch: ${(droneStore.rotation.x * 180 / Math.PI).toFixed(1)}°`);
+        });
+    }
+
     async setPitch(degrees: number): Promise<void> {
         return new Promise((resolve, reject) => {
             const radians = (degrees * Math.PI) / 180;
@@ -260,6 +293,16 @@ export class DroneController {
 
     async moveTo(targetPosition: THREE.Vector3, options: { speed?: number, timeout?: number } = {}): Promise<void> {
         return new Promise((resolve, reject) => {
+            const droneStore = useDrone.getState();
+
+            // Calculate initial heading to target
+            // In THREE.js coordinate system: atan2(x, z) gives correct heading
+            const posError = new THREE.Vector3().subVectors(targetPosition, droneStore.position);
+            const initialHeading = Math.atan2(posError.x, posError.z);
+
+            console.log(`[MoveTo] Starting from (${droneStore.position.x.toFixed(1)}, ${droneStore.position.z.toFixed(1)}) to (${targetPosition.x.toFixed(1)}, ${targetPosition.z.toFixed(1)})`);
+            console.log(`[MoveTo] Initial heading: ${(initialHeading * 180 / Math.PI).toFixed(1)}°`);
+
             const command: DroneCommand = {
                 id: `moveTo_${Date.now()}`,
                 type: 'moveTo',
@@ -272,8 +315,11 @@ export class DroneController {
 
             this.targets.position = targetPosition.clone();
             this.targets.altitude = targetPosition.y;
+            this.targets.heading = initialHeading;
             this.isAutopilot = true;
             this.executeCommand(command);
+
+            console.log(`[MoveTo] Target set: (${targetPosition.x.toFixed(1)}, ${targetPosition.y.toFixed(1)}, ${targetPosition.z.toFixed(1)}), Heading: ${(initialHeading * 180 / Math.PI).toFixed(1)}°`);
         });
     }
 
@@ -410,56 +456,149 @@ export class DroneController {
             setpoints.throttle = Math.max(0, Math.min(1, hoverThrottle + throttleCorrection));
         }
 
-        // Position control with velocity feedback for smooth stopping
-        if (this.targets.position) {
-            const posError = new THREE.Vector3().subVectors(this.targets.position, droneStore.position);
-            const distance = Math.sqrt(posError.x ** 2 + posError.z ** 2);
+        // BRAKE MODE - Pitch opposite to velocity direction
+        if (this.currentCommand && this.currentCommand.type === 'brake' && !this.targets.position) {
+            const brakeElapsed = Date.now() - this.currentCommand.startTime;
+            const worldVelX = droneStore.velocity.x;
+            const worldVelZ = droneStore.velocity.z;
+            const totalSpeed = Math.sqrt(worldVelX ** 2 + worldVelZ ** 2);
 
-            // Calculate desired heading to target
-            const targetYaw = Math.atan2(posError.x, -posError.z);
-            this.targets.heading = targetYaw;
-
-            // Calculate forward velocity in body frame
+            // Transform velocity to body frame
             const yaw = droneStore.rotation.y;
             const cosYaw = Math.cos(yaw);
             const sinYaw = Math.sin(yaw);
-            const forwardVel = -droneStore.velocity.z * cosYaw - droneStore.velocity.x * sinYaw;
+            const forwardVel = cosYaw * worldVelZ + sinYaw * worldVelX;
+            const sideVel = -sinYaw * worldVelZ + cosYaw * worldVelX;
 
-            if (distance > this.config.positionTolerance) {
-                // Velocity control with braking profile
-                const maxSpeed = 3.0;
-                const brakingDistance = 5.0;
+            const currentPitch = droneStore.rotation.x;
+            const currentRoll = droneStore.rotation.z;
 
-                // Calculate desired speed (slow down as we approach)
-                let desiredSpeed;
-                if (distance > brakingDistance) {
-                    desiredSpeed = maxSpeed;
-                } else {
-                    desiredSpeed = maxSpeed * (distance / brakingDistance);
-                    desiredSpeed = Math.max(desiredSpeed, 0.5);
+            // PHASE 1: First 1.2 seconds - pitch/roll OPPOSITE to velocity at max angle
+            if (brakeElapsed < 1200) {
+                const maxAngle = 60 * Math.PI / 180; // 60 degrees max
+
+                // Calculate target angles opposite to velocity
+                // If moving forward (forwardVel > 0), pitch back (NEGATIVE pitch to counter)
+                // If moving sideways right (sideVel > 0), roll left (POSITIVE roll to counter)
+                const targetPitch = forwardVel > 0.5 ? -maxAngle : (forwardVel < -0.5 ? maxAngle : 0);
+                const targetRoll = sideVel > 0.5 ? maxAngle : (sideVel < -0.5 ? -maxAngle : 0);
+
+                const pitchError = targetPitch - currentPitch;
+                const rollError = targetRoll - currentRoll;
+
+                // Strong proportional control
+                setpoints.pitch = pitchError * 5.0;
+                setpoints.roll = rollError * 5.0;
+                setpoints.throttle = 1.0; // Full throttle
+
+                if (Math.random() < 0.1) {
+                    console.log(`[BRAKE PHASE 1] FwdVel: ${forwardVel.toFixed(2)}, Target: ${(targetPitch * 180 / Math.PI).toFixed(0)}°, Current: ${(currentPitch * 180 / Math.PI).toFixed(1)}°, Speed: ${totalSpeed.toFixed(2)}m/s`);
                 }
+            }
+            // PHASE 2: After 1.2 seconds - level out to 0°
+            else {
+                const pitchError = 0 - currentPitch;
+                const rollError = 0 - currentRoll;
 
-                // Velocity feedback: pitch based on speed error
-                const speedError = desiredSpeed - forwardVel;
-                const kv = 0.15;
+                setpoints.pitch = pitchError * 3.0;
+                setpoints.roll = rollError * 3.0;
+                setpoints.throttle = 0.4; // Hover throttle
 
-                setpoints.pitch = -speedError * kv;
+                if (Math.random() < 0.1) {
+                    console.log(`[BRAKE PHASE 2] Leveling, Pitch: ${(currentPitch * 180 / Math.PI).toFixed(1)}°, Speed: ${totalSpeed.toFixed(2)}m/s`);
+                }
+            }
+
+            // Clamp to safe limits
+            const maxTorque = 1.0;
+            setpoints.pitch = Math.max(-maxTorque, Math.min(maxTorque, setpoints.pitch));
+            setpoints.roll = Math.max(-maxTorque, Math.min(maxTorque, setpoints.roll));
+        }
+        // Position control with PD velocity control
+        else if (this.targets.position) {
+            const normalizeAngle = (angle: number) => {
+                return ((angle + Math.PI) % (2 * Math.PI)) - Math.PI;
+            };
+
+            const posError = new THREE.Vector3().subVectors(this.targets.position, droneStore.position);
+            const distance = Math.sqrt(posError.x ** 2 + posError.z ** 2);
+
+            const worldVelX = droneStore.velocity.x;
+            const worldVelZ = droneStore.velocity.z;
+            const totalSpeed = Math.sqrt(worldVelX ** 2 + worldVelZ ** 2);
+
+            // Heading control with deadzone
+            const yawDeadzone = 0.5;
+            if (distance > yawDeadzone) {
+                const desiredYaw = Math.atan2(posError.x, posError.z);
+                this.targets.heading = normalizeAngle(desiredYaw);
+            } else if (this.targets.heading === undefined) {
+                this.targets.heading = droneStore.rotation.y;
+            }
+
+            // Transform velocity to body frame to check forward speed
+            const yaw = droneStore.rotation.y;
+            const cosYaw = Math.cos(yaw);
+            const sinYaw = Math.sin(yaw);
+            const forwardVel = cosYaw * worldVelZ + sinYaw * worldVelX;
+            const sideVel = -sinYaw * worldVelZ + cosYaw * worldVelX;
+
+            // AGGRESSIVE REVERSE THRUST BRAKING
+            // When close to target with high speed, pitch opposite direction hard
+            const brakingDistance = 2.0;
+            const brakingSpeedThreshold = 2.0; // m/s
+
+            if (distance < brakingDistance && totalSpeed > brakingSpeedThreshold) {
+                // REVERSE THRUST MODE
+                // Pitch hard opposite to velocity direction
+                const reversePitchGain = 1.5;
+                const reversePitch = forwardVel * reversePitchGain;
+                const reverseRoll = sideVel * reversePitchGain;
+
+                setpoints.pitch = reversePitch;
+                setpoints.roll = reverseRoll;
+                setpoints.throttle = 1.0; // Full throttle for maximum braking force
+
+                console.log(`[BRAKE] Reverse thrust! Speed: ${totalSpeed.toFixed(2)}m/s, Pitch: ${reversePitch.toFixed(2)}`);
+            } else if (distance < this.config.positionTolerance && totalSpeed < 0.5) {
+                // STOPPED AT TARGET
+                setpoints.pitch = 0;
                 setpoints.roll = 0;
-
-                const maxPitch = 0.15;
-                setpoints.pitch = Math.max(-maxPitch, Math.min(maxPitch, setpoints.pitch));
             } else {
-                // At target - actively brake
-                if (Math.abs(forwardVel) > 0.2) {
-                    setpoints.pitch = forwardVel * 0.3; // Brake
-                    setpoints.roll = 0;
+                // NORMAL PD CONTROL
+                const kp_pos = 1.0;
+                const kd_pos = 2.5;
 
-                    const maxBrake = 0.1;
-                    setpoints.pitch = Math.max(-maxBrake, Math.min(maxBrake, setpoints.pitch));
-                } else {
-                    setpoints.pitch = 0;
-                    setpoints.roll = 0;
+                // PD control: v_cmd = kp*(p_target - p_curr) - kd*v_curr
+                let desiredVelX = kp_pos * posError.x - kd_pos * worldVelX;
+                let desiredVelZ = kp_pos * posError.z - kd_pos * worldVelZ;
+
+                // Limit max speed
+                const maxSpeed = 4.0;
+                const cmdSpeed = Math.sqrt(desiredVelX ** 2 + desiredVelZ ** 2);
+                if (cmdSpeed > maxSpeed) {
+                    const scale = maxSpeed / cmdSpeed;
+                    desiredVelX *= scale;
+                    desiredVelZ *= scale;
                 }
+
+                const desiredVelForward = cosYaw * desiredVelZ + sinYaw * desiredVelX;
+                const desiredVelSide = -sinYaw * desiredVelZ + cosYaw * desiredVelX;
+
+                // Map to pitch/roll
+                const kv = 0.2;
+                setpoints.pitch = -desiredVelForward * kv;
+                setpoints.roll = desiredVelSide * kv;
+            }
+
+            // Clamp pitch/roll
+            const maxTilt = 0.4;
+            setpoints.pitch = Math.max(-maxTilt, Math.min(maxTilt, setpoints.pitch));
+            setpoints.roll = Math.max(-maxTilt, Math.min(maxTilt, setpoints.roll));
+
+            // Debug
+            if (Math.random() < 0.05) {
+                console.log(`[MoveTo] Dist: ${distance.toFixed(2)}m, Speed: ${totalSpeed.toFixed(2)}m/s, Pitch: ${setpoints.pitch.toFixed(2)}, Roll: ${setpoints.roll.toFixed(2)}`);
             }
         } else {
             setpoints.pitch = 0;
@@ -512,12 +651,34 @@ export class DroneController {
                 isComplete = hoverTime > 1000 && isStable && isNearTarget;
                 break;
 
+            case 'brake':
+                const brakeTime = Date.now() - this.currentCommand.startTime;
+                const speed = droneStore.velocity.length();
+                const currentPitch = droneStore.rotation.x;
+
+                // Complete after 3 seconds OR when speed is very low
+                const minBrakeTime = 3000; // 3 seconds total (1.2s brake + 1.8s level)
+                const isStopped = speed < 1.0; // Relaxed threshold
+                const isLeveledOut = Math.abs(currentPitch) < 0.2; // Nearly level (11 degrees)
+
+                if (brakeTime > minBrakeTime || (isStopped && isLeveledOut && brakeTime > 1500)) {
+                    const initialSpeed = this.currentCommand.parameters.initialSpeed || 0;
+                    console.log(`[BRAKE] Complete! ${initialSpeed.toFixed(2)} → ${speed.toFixed(2)} m/s in ${(brakeTime / 1000).toFixed(2)}s`);
+                    console.log(`[BRAKE] Final position: (${droneStore.position.x.toFixed(1)}, ${droneStore.position.z.toFixed(1)}), Pitch: ${(currentPitch * 180 / Math.PI).toFixed(1)}°`);
+                    isComplete = true;
+                } else if (brakeTime % 500 < 20) {
+                    console.log(`[BRAKE] Speed: ${speed.toFixed(2)} m/s, Pitch: ${(currentPitch * 180 / Math.PI).toFixed(1)}°, Time: ${(brakeTime / 1000).toFixed(2)}s`);
+                }
+                break;
+
             case 'moveTo':
                 if (this.targets.position) {
                     const distance = droneStore.position.distanceTo(this.targets.position);
                     const speed = droneStore.velocity.length();
-                    console.log(`MoveTo: distance=${distance.toFixed(2)}m, speed=${speed.toFixed(2)}m/s, tolerance=${this.config.positionTolerance}m`);
-                    isComplete = distance < this.config.positionTolerance && speed < 2.0;
+                    if (Math.random() < 0.1) {
+                        console.log(`[MoveTo] Dist: ${distance.toFixed(2)}m, Speed: ${speed.toFixed(2)}m/s`);
+                    }
+                    isComplete = distance < 1.0 && speed < 1.0;
                 }
                 break;
 

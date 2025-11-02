@@ -21,7 +21,7 @@ export interface MotorOutputs {
 
 export interface DroneCommand {
   id: string;
-  type: 'takeoff' | 'land' | 'hover' | 'setPitch' | 'setRoll' | 'setYaw' | 'setThrottle' | 'moveTo' | 'emergencyStop';
+  type: 'takeoff' | 'land' | 'hover' | 'brake' | 'setPitch' | 'setRoll' | 'setYaw' | 'setThrottle' | 'moveTo' | 'emergencyStop';
   parameters: Record<string, any>;
   resolve: () => void;
   reject: (error: Error) => void;

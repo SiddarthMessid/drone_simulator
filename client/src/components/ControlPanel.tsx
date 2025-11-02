@@ -167,6 +167,15 @@ export default function ControlPanel() {
         </h4>
 
         <div style={infoStyle}>
+          <span>Position (X, Y, Z):</span>
+          <span style={valueStyle}>
+            ({useDrone.getState().position.x.toFixed(1)},{" "}
+            {useDrone.getState().position.y.toFixed(1)},{" "}
+            {useDrone.getState().position.z.toFixed(1)}) m
+          </span>
+        </div>
+
+        <div style={infoStyle}>
           <span>Altitude:</span>
           <span style={valueStyle}>{telemetry.altitude.toFixed(2)} m</span>
         </div>
@@ -205,9 +214,9 @@ export default function ControlPanel() {
           <div
             style={{ marginBottom: "8px", color: "#a0a0a0", fontSize: "13px" }}
           >
-            Position Hold
+            Flight Controls
           </div>
-          <div>
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
             <Button
               size="sm"
               onClick={() => {
@@ -222,6 +231,46 @@ export default function ControlPanel() {
               {useDrone.getState().altitudeHoldEnabled
                 ? "Holding"
                 : "Altitude Hold"}
+            </Button>
+            <Button
+              size="sm"
+              onClick={async () => {
+                const { drone } = await import("../lib/droneController");
+                await drone.brake();
+              }}
+              variant="destructive"
+            >
+              🛑 Brake
+            </Button>
+            <Button
+              size="sm"
+              onClick={async () => {
+                const { drone } = await import("../lib/droneController");
+
+                try {
+                  console.log(
+                    `[TEST] Starting 2-second forward flight test...`
+                  );
+
+                  // Pitch forward for 2 seconds
+                  console.log(`[TEST] Moving forward for 2 seconds...`);
+                  await drone.setPitch(-15); // Pitch forward 15 degrees
+                  await drone.delay(2); // Wait 2 seconds
+
+                  console.log(`[TEST] Braking...`);
+                  await drone.brake();
+
+                  console.log(`[TEST] Landing...`);
+                  await drone.land();
+
+                  console.log(`[TEST] Test complete!`);
+                } catch (error) {
+                  console.error(`[TEST] Failed:`, error);
+                }
+              }}
+              variant="secondary"
+            >
+              🧪 Test 2s
             </Button>
           </div>
         </div>

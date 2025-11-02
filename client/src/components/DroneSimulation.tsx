@@ -231,8 +231,13 @@ export default function DroneSimulation() {
     // Determine motor outputs: bypass PID for manual control, use PID for autopilot
     let motorOutputs;
 
-    if (drone.isAutopilotActive()) {
-      // Autopilot mode: Use PID controller for smooth stabilization
+    const currentCommand = drone.getCurrentCommand();
+    const isPositionControl =
+      currentCommand &&
+      (currentCommand.type === "moveTo" || currentCommand.type === "brake");
+
+    if (drone.isAutopilotActive() && !isPositionControl) {
+      // Autopilot mode (hover, takeoff, land): Use PID controller for smooth stabilization
       motorOutputs = pidController.current.update(
         {
           pitch: rotation.x,
@@ -243,6 +248,26 @@ export default function DroneSimulation() {
         setpoints,
         delta
       );
+    } else if (isPositionControl) {
+      // Position control mode: setpoints are torques, not angles
+      // Apply stabilization + position control torques
+      const pitchTorque =
+        setpoints.pitch - rotation.x * 2.0 - angularVelocity.x * 1.0;
+      const rollTorque =
+        setpoints.roll - rotation.z * 2.0 - angularVelocity.z * 1.0;
+
+      // Yaw uses PID to reach target heading
+      const yawError = setpoints.yaw - rotation.y;
+      const normalizedYawError =
+        ((yawError + Math.PI) % (2 * Math.PI)) - Math.PI;
+      const yawTorque = normalizedYawError * 2.0 - angularVelocity.y * 1.0;
+
+      motorOutputs = {
+        pitch: pitchTorque,
+        roll: rollTorque,
+        yaw: yawTorque,
+        throttle: setpoints.throttle,
+      };
     } else {
       // Manual mode: Direct control without PID
       // Apply active stabilization to return to level when no input
