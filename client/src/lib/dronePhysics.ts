@@ -142,14 +142,6 @@ export class DronePhysics {
         const yawQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), state.rotation.y);
         thrustWorld.applyQuaternion(yawQuat);
 
-        // Debug: Log when there's significant tilt
-        if (Math.abs(state.rotation.x) > 0.1 || Math.abs(state.rotation.z) > 0.1) {
-            const yawDeg = (state.rotation.y * 180 / Math.PI).toFixed(0);
-            const pitchDeg = (state.rotation.x * 180 / Math.PI).toFixed(1);
-            const rollDeg = (state.rotation.z * 180 / Math.PI).toFixed(1);
-            console.log(`Yaw:${yawDeg}° Pitch:${pitchDeg}° Roll:${rollDeg}° | Thrust:[${thrustWorld.x.toFixed(2)}, ${thrustWorld.y.toFixed(2)}, ${thrustWorld.z.toFixed(2)}]`);
-        }
-
         forces.add(thrustWorld);
 
         // Wind forces

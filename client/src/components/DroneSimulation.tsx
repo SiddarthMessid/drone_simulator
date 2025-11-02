@@ -317,12 +317,30 @@ export default function DroneSimulation() {
     updateDrone(newState);
 
     // Update drone model position and rotation
+    // Use quaternion to match the body-frame rotation used in physics thrust
     droneRef.current.position.copy(newState.position);
-    droneRef.current.rotation.set(
-      newState.rotation.x,
-      newState.rotation.y,
+
+    // Build rotation using same order as thrust: yaw first, then pitch/roll
+    const yawQuat = new THREE.Quaternion().setFromAxisAngle(
+      new THREE.Vector3(0, 1, 0),
+      newState.rotation.y
+    );
+    const pitchQuat = new THREE.Quaternion().setFromAxisAngle(
+      new THREE.Vector3(1, 0, 0),
+      newState.rotation.x
+    );
+    const rollQuat = new THREE.Quaternion().setFromAxisAngle(
+      new THREE.Vector3(0, 0, 1),
       newState.rotation.z
     );
+
+    // Apply in order: yaw, then pitch, then roll (body-frame)
+    const finalQuat = new THREE.Quaternion();
+    finalQuat.multiply(yawQuat);
+    finalQuat.multiply(pitchQuat);
+    finalQuat.multiply(rollQuat);
+
+    droneRef.current.quaternion.copy(finalQuat);
 
     // Update telemetry
     setTelemetry({
