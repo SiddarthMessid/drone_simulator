@@ -129,11 +129,27 @@ export class DronePhysics {
         this.motorThrust += (desiredThrust - this.motorThrust) * alpha;
 
         // Transform thrust to world frame
+        // Manual body-frame transformation: apply yaw first, then pitch/roll
         const thrustWorld = new THREE.Vector3(0, this.motorThrust, 0);
-        const rotationMatrix = new THREE.Matrix4().makeRotationFromEuler(
-            new THREE.Euler(state.rotation.x, state.rotation.y, state.rotation.z, 'XYZ')
-        );
-        thrustWorld.applyMatrix4(rotationMatrix);
+
+        // Step 1: Apply pitch and roll (body-frame rotations)
+        const pitchQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), state.rotation.x);
+        const rollQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), state.rotation.z);
+        const bodyQuat = new THREE.Quaternion().multiplyQuaternions(pitchQuat, rollQuat);
+        thrustWorld.applyQuaternion(bodyQuat);
+
+        // Step 2: Apply yaw (world-frame rotation)
+        const yawQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), state.rotation.y);
+        thrustWorld.applyQuaternion(yawQuat);
+
+        // Debug: Log when there's significant tilt
+        if (Math.abs(state.rotation.x) > 0.1 || Math.abs(state.rotation.z) > 0.1) {
+            const yawDeg = (state.rotation.y * 180 / Math.PI).toFixed(0);
+            const pitchDeg = (state.rotation.x * 180 / Math.PI).toFixed(1);
+            const rollDeg = (state.rotation.z * 180 / Math.PI).toFixed(1);
+            console.log(`Yaw:${yawDeg}° Pitch:${pitchDeg}° Roll:${rollDeg}° | Thrust:[${thrustWorld.x.toFixed(2)}, ${thrustWorld.y.toFixed(2)}, ${thrustWorld.z.toFixed(2)}]`);
+        }
+
         forces.add(thrustWorld);
 
         // Wind forces
