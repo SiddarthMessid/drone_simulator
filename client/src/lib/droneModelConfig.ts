@@ -18,7 +18,7 @@ export interface DroneModelConfig {
 
 export const droneModelConfig: DroneModelConfig = {
   // Change this to 'gltf' to use your GLTF/GLB model
-  type: 'gltf', // 'procedural' or 'gltf'
+  type: 'procedural', // 'procedural' or 'gltf'
 
   // GLTF/GLB model settings (GLB is binary GLTF - single file)
   gltfPath: '/models/drone/scene.gltf',

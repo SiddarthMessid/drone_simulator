@@ -42,23 +42,12 @@ export class DronePhysics {
 
         // Calculate forces and torques
         const forces = this.calculateForces(newState, motorOutputs, windForce, dt);
-        const bodyTorques = this.calculateTorques(motorOutputs);
-
-        // Transform body-frame torques to world-frame angular velocity changes
-        // Body frame: pitch/roll are relative to drone's orientation
-        // We only need to rotate pitch and roll by yaw; yaw stays the same
-        const yaw = currentState.rotation.y;
-        const cosYaw = Math.cos(yaw);
-        const sinYaw = Math.sin(yaw);
-
-        // Transform pitch and roll torques from body to world frame
-        const worldPitchTorque = bodyTorques.x * cosYaw + bodyTorques.z * sinYaw;
-        const worldRollTorque = -bodyTorques.x * sinYaw + bodyTorques.z * cosYaw;
+        const torques = this.calculateTorques(motorOutputs);
 
         // Update angular velocity (torque / inertia)
-        newState.angularVelocity.x += (worldPitchTorque / this.config.inertia.x) * dt;
-        newState.angularVelocity.y += (bodyTorques.y / this.config.inertia.y) * dt;
-        newState.angularVelocity.z += (worldRollTorque / this.config.inertia.z) * dt;
+        newState.angularVelocity.x += (torques.x / this.config.inertia.x) * dt;
+        newState.angularVelocity.y += (torques.y / this.config.inertia.y) * dt;
+        newState.angularVelocity.z += (torques.z / this.config.inertia.z) * dt;
 
         // Apply angular drag
         const dragFactor = Math.max(0, 1 - this.config.angularDrag * dt);

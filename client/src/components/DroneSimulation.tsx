@@ -245,8 +245,7 @@ export default function DroneSimulation() {
       );
     } else {
       // Manual mode: Direct control without PID
-      // Controls are in BODY FRAME (relative to drone's orientation)
-      // Physics engine will transform to world frame
+      // Apply active stabilization to return to level when no input
 
       let pitchTorque = setpoints.pitch;
       let rollTorque = setpoints.roll;
