@@ -3,12 +3,15 @@ import TerrainMesh from "./TerrainMesh";
 import BoundaryMarkers from "./BoundaryMarkers";
 import { useEnvironment } from "../lib/stores/useEnvironment";
 import { useTerrainConfigStore } from "../lib/hooks/useTerrainConfig";
+import { useSceneMode } from "../lib/stores/useSceneMode";
 import * as THREE from "three";
+import { useMemo } from "react";
 
 export default function ModularTerrainEnvironment() {
   const { environmentSize, skyColor } = useEnvironment();
   const { config } = useTerrainConfigStore();
   const { isFlat } = useTerrainConfigStore();
+  const { mode: sceneMode } = useSceneMode();
 
   // Load textures
   const textures = {
@@ -26,12 +29,47 @@ export default function ModularTerrainEnvironment() {
 
   const skyTexture = useTexture("/textures/sky.png");
 
+  // Create checkerboard texture for HIL mode
+  const checkerboardTexture = useMemo(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+
+    const squareSize = 64;
+    for (let i = 0; i < 8; i++) {
+      for (let j = 0; j < 8; j++) {
+        ctx.fillStyle = (i + j) % 2 === 0 ? "#ffffff" : "#000000";
+        ctx.fillRect(i * squareSize, j * squareSize, squareSize, squareSize);
+      }
+    }
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(20, 20);
+    return texture;
+  }, []);
+
   return (
     <>
       {/* Terrain */}
-      <TerrainMesh textures={textures} config={config} />
-      {/* Grid Helper (only for flat mode) */}
-      {isFlat && (
+      {sceneMode === "hil" ? (
+        // HIL Mode: Simple flat plane with checkerboard
+        <mesh
+          rotation={[-Math.PI / 2, 0, 0]}
+          position={[0, 0, 0]}
+          receiveShadow
+        >
+          <planeGeometry args={[1000, 1000]} />
+          <meshStandardMaterial map={checkerboardTexture} />
+        </mesh>
+      ) : (
+        // Simulation Mode: Normal terrain
+        <TerrainMesh textures={textures} config={config} />
+      )}
+      {/* Grid Helper (only for flat mode in simulation) */}
+      {isFlat && sceneMode === "simulation" && (
         <gridHelper
           args={[100, 50, "#444444", "#222222"]}
           position={[0, 0.01, 0]}
@@ -156,15 +194,36 @@ export default function ModularTerrainEnvironment() {
 
       {/* Note: Invisible boundary walls are handled in physics (useEnvironment.getObstacleAABBs) */}
 
-      {/* Skybox */}
-      <mesh>
-        <sphereGeometry args={[500, 32, 32]} />
-        {skyColor ? (
-          <meshBasicMaterial color={skyColor} side={THREE.BackSide} />
-        ) : (
-          <meshBasicMaterial map={skyTexture} side={THREE.BackSide} />
-        )}
-      </mesh>
+      {/* Skybox - Only in simulation mode */}
+      {sceneMode === "simulation" && (
+        <mesh>
+          <sphereGeometry args={[500, 32, 32]} />
+          {skyColor ? (
+            <meshBasicMaterial color={skyColor} side={THREE.BackSide} />
+          ) : (
+            <meshBasicMaterial map={skyTexture} side={THREE.BackSide} />
+          )}
+        </mesh>
+      )}
+
+      {/* HIL Mode: Simple directional light instead of skybox */}
+      {sceneMode === "hil" && (
+        <>
+          <ambientLight intensity={0.6} />
+          <directionalLight
+            position={[10, 20, 10]}
+            intensity={1.0}
+            castShadow
+            shadow-mapSize-width={2048}
+            shadow-mapSize-height={2048}
+            shadow-camera-far={100}
+            shadow-camera-left={-50}
+            shadow-camera-right={50}
+            shadow-camera-top={50}
+            shadow-camera-bottom={-50}
+          />
+        </>
+      )}
     </>
   );
 }

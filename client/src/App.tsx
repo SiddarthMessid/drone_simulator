@@ -17,6 +17,7 @@ import CameraControls from "./components/CameraControls";
 import DroneFlockSimple from "./components/DroneFlock.simple";
 import MultiDroneControllerSimple from "./components/MultiDroneController.simple";
 import MissionPlanner from "./components/MissionPlanner";
+import { useSceneMode } from "./lib/stores/useSceneMode";
 import { Button } from "./components/ui/button";
 import {
   Settings,
@@ -31,6 +32,8 @@ import {
   Users,
   Target,
   FileCode,
+  Mountain,
+  Microscope,
 } from "lucide-react";
 import DraggableWindow from "./components/DraggableWindow";
 import Console from "./components/Console";
@@ -128,6 +131,7 @@ function createWebGLRenderer(
 }
 
 function App() {
+  const { mode: sceneMode, setMode } = useSceneMode();
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
   const [leftPanelWidth, setLeftPanelWidth] = useState(400);
   const [isResizing, setIsResizing] = useState(false);
@@ -143,6 +147,13 @@ function App() {
   const [fileExplorerOpen, setFileExplorerOpen] = useState(true);
   const [fileExplorerWidth, setFileExplorerWidth] = useState(250);
   const [isResizingFileExplorer, setIsResizingFileExplorer] = useState(false);
+
+  // Auto-open telemetry panel in HIL mode
+  useEffect(() => {
+    if (sceneMode === "hil") {
+      setControlPanelOpen(true);
+    }
+  }, [sceneMode]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsResizing(true);
@@ -265,7 +276,7 @@ function App() {
           </div>
 
           {/* Title */}
-          <div style={{ flex: 1 }}>
+          <div>
             <h1
               style={{
                 fontSize: "16px",
@@ -278,6 +289,109 @@ function App() {
               3D Drone Simulator
             </h1>
           </div>
+
+          <div style={{ flex: 1 }} />
+
+          {/* Scene Mode Toggle - Centered in Header */}
+          <div
+            style={{
+              display: "flex",
+              gap: "6px",
+              background: "rgba(30, 30, 30, 0.8)",
+              padding: "4px",
+              borderRadius: "8px",
+              border: "1px solid rgba(255, 255, 255, 0.1)",
+            }}
+          >
+            <button
+              onClick={() => setMode("simulation")}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                height: "28px",
+                fontSize: "12px",
+                padding: "0 14px",
+                borderRadius: "6px",
+                background:
+                  sceneMode === "simulation"
+                    ? "rgba(14, 165, 233, 0.2)"
+                    : "transparent",
+                color:
+                  sceneMode === "simulation"
+                    ? "rgba(14, 165, 233, 1)"
+                    : "rgba(255, 255, 255, 0.6)",
+                cursor: "pointer",
+                transition: "all 0.2s",
+                fontWeight: sceneMode === "simulation" ? "600" : "400",
+                border:
+                  sceneMode === "simulation"
+                    ? "1px solid rgba(14, 165, 233, 0.4)"
+                    : "1px solid transparent",
+              }}
+              onMouseEnter={(e) => {
+                if (sceneMode !== "simulation") {
+                  e.currentTarget.style.background =
+                    "rgba(255, 255, 255, 0.05)";
+                  e.currentTarget.style.color = "rgba(255, 255, 255, 0.9)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (sceneMode !== "simulation") {
+                  e.currentTarget.style.background = "transparent";
+                  e.currentTarget.style.color = "rgba(255, 255, 255, 0.6)";
+                }
+              }}
+            >
+              <Mountain style={{ width: "14px", height: "14px" }} />
+              Simulation
+            </button>
+            <button
+              onClick={() => setMode("hil")}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                height: "28px",
+                fontSize: "12px",
+                padding: "0 14px",
+                borderRadius: "6px",
+                background:
+                  sceneMode === "hil"
+                    ? "rgba(14, 165, 233, 0.2)"
+                    : "transparent",
+                color:
+                  sceneMode === "hil"
+                    ? "rgba(14, 165, 233, 1)"
+                    : "rgba(255, 255, 255, 0.6)",
+                cursor: "pointer",
+                transition: "all 0.2s",
+                fontWeight: sceneMode === "hil" ? "600" : "400",
+                border:
+                  sceneMode === "hil"
+                    ? "1px solid rgba(14, 165, 233, 0.4)"
+                    : "1px solid transparent",
+              }}
+              onMouseEnter={(e) => {
+                if (sceneMode !== "hil") {
+                  e.currentTarget.style.background =
+                    "rgba(255, 255, 255, 0.05)";
+                  e.currentTarget.style.color = "rgba(255, 255, 255, 0.9)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (sceneMode !== "hil") {
+                  e.currentTarget.style.background = "transparent";
+                  e.currentTarget.style.color = "rgba(255, 255, 255, 0.6)";
+                }
+              }}
+            >
+              <Microscope style={{ width: "14px", height: "14px" }} />
+              HIL Test
+            </button>
+          </div>
+
+          <div style={{ flex: 1 }} />
 
           {/* Status Badge */}
           <div
@@ -336,8 +450,8 @@ function App() {
               position: "relative",
             }}
           >
-            {/* File Explorer - Independent Panel */}
-            {fileExplorerOpen && (
+            {/* File Explorer - Independent Panel - Hide in HIL mode */}
+            {fileExplorerOpen && sceneMode === "simulation" && (
               <>
                 <div
                   style={{
@@ -392,8 +506,8 @@ function App() {
               </>
             )}
 
-            {/* Left Panel - Code Editor (Collapsible & Resizable) */}
-            {leftPanelOpen && (
+            {/* Left Panel - Code Editor (Collapsible & Resizable) - Hide in HIL mode */}
+            {leftPanelOpen && sceneMode === "simulation" && (
               <div
                 style={{
                   width: `${leftPanelWidth}px`,
@@ -493,14 +607,14 @@ function App() {
                 >
                   <Suspense fallback={null}>
                     <DroneSimulation />
-                    <DroneFlockSimple />
-                    <ImportedModels />
+                    {sceneMode === "simulation" && <DroneFlockSimple />}
+                    {sceneMode === "simulation" && <ImportedModels />}
                   </Suspense>
                 </Canvas>
               </ErrorBoundary>
 
-              {/* Left Panel Toggle Button (when collapsed) */}
-              {!leftPanelOpen && (
+              {/* Left Panel Toggle Button (when collapsed) - Hide in HIL mode */}
+              {!leftPanelOpen && sceneMode === "simulation" && (
                 <div
                   style={{
                     position: "absolute",
@@ -525,7 +639,7 @@ function App() {
                 </div>
               )}
 
-              {/* Right Panel Toggle Buttons */}
+              {/* Right Panel Toggle Buttons - Hide most in HIL mode */}
               <div
                 style={{
                   position: "absolute",
@@ -537,47 +651,51 @@ function App() {
                   zIndex: 20,
                 }}
               >
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setTerrainEditorOpen(true)}
-                  style={{
-                    color: "#888",
-                    background: "rgba(0,0,0,0.7)",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                  }}
-                >
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  Generate Scene
-                </Button>
+                {sceneMode === "simulation" && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setTerrainEditorOpen(true)}
+                      style={{
+                        color: "#888",
+                        background: "rgba(0,0,0,0.7)",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                      }}
+                    >
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Generate Scene
+                    </Button>
 
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setEnvironmentPanelOpen(true)}
-                  style={{
-                    color: "#888",
-                    background: "rgba(0,0,0,0.7)",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                  }}
-                >
-                  <Settings className="h-4 w-4 mr-2" />
-                  Environment
-                </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setEnvironmentPanelOpen(true)}
+                      style={{
+                        color: "#888",
+                        background: "rgba(0,0,0,0.7)",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                      }}
+                    >
+                      <Settings className="h-4 w-4 mr-2" />
+                      Environment
+                    </Button>
 
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setWindPanelOpen(true)}
-                  style={{
-                    color: "#888",
-                    background: "rgba(0,0,0,0.7)",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                  }}
-                >
-                  <Wind className="h-4 w-4 mr-2" />
-                  Wind
-                </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setWindPanelOpen(true)}
+                      style={{
+                        color: "#888",
+                        background: "rgba(0,0,0,0.7)",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                      }}
+                    >
+                      <Wind className="h-4 w-4 mr-2" />
+                      Wind
+                    </Button>
+                  </>
+                )}
 
                 <Button
                   variant="ghost"
@@ -593,36 +711,40 @@ function App() {
                   Data
                 </Button>
 
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setFleetPanelOpen(true)}
-                  style={{
-                    color: "#888",
-                    background: "rgba(0,0,0,0.7)",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                  }}
-                >
-                  <Users className="h-4 w-4 mr-2" />
-                  Fleet
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setMissionPanelOpen(true)}
-                  style={{
-                    color: "#888",
-                    background: "rgba(0,0,0,0.7)",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                  }}
-                >
-                  <Target className="h-4 w-4 mr-2" />
-                  Mission
-                </Button>
+                {sceneMode === "simulation" && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setFleetPanelOpen(true)}
+                      style={{
+                        color: "#888",
+                        background: "rgba(0,0,0,0.7)",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                      }}
+                    >
+                      <Users className="h-4 w-4 mr-2" />
+                      Fleet
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setMissionPanelOpen(true)}
+                      style={{
+                        color: "#888",
+                        background: "rgba(0,0,0,0.7)",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                      }}
+                    >
+                      <Target className="h-4 w-4 mr-2" />
+                      Mission
+                    </Button>
+                  </>
+                )}
               </div>
 
-              {/* Console Toggle Button (when collapsed) */}
-              {!bottomPanelOpen && (
+              {/* Console Toggle Button (when collapsed) - Hide in HIL mode */}
+              {!bottomPanelOpen && sceneMode === "simulation" && (
                 <div
                   style={{
                     position: "absolute",
@@ -656,8 +778,8 @@ function App() {
             </div>
           </div>
 
-          {/* Bottom Panel - Console (Resizable) */}
-          {bottomPanelOpen && (
+          {/* Bottom Panel - Console (Resizable) - Hide in HIL mode */}
+          {bottomPanelOpen && sceneMode === "simulation" && (
             <div
               style={{
                 width: "100%",

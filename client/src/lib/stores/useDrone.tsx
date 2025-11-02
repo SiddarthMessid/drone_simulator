@@ -33,10 +33,10 @@ interface DroneStore {
   updatePIDParams: (params: PIDParams) => void;
   setTelemetry: (telemetry: DroneTelemetry) => void;
   reset: () => void;
-  // Position-hold for main drone
-  positionHoldEnabled: boolean;
+  // Altitude-hold for main drone
+  altitudeHoldEnabled: boolean;
   holdPosition: THREE.Vector3 | null;
-  enablePositionHold: (enabled: boolean) => void;
+  enableAltitudeHold: (enabled: boolean) => void;
 }
 
 export const useDrone = create<DroneStore>((set, get) => ({
@@ -73,22 +73,22 @@ export const useDrone = create<DroneStore>((set, get) => ({
     set({ telemetry });
   },
 
-  // Position-hold for the main drone
+  // Altitude-hold for the main drone
   // When enabled, the store will keep a holdPosition that higher-level
   // controllers can read to hold the drone in place.
   // Note: this is intentionally lightweight — DroneController instances
   // can also implement their own local hold; this allows main drone UI
   // to toggle hold from the global store.
-  positionHoldEnabled: false,
+  altitudeHoldEnabled: false,
   holdPosition: null as unknown as THREE.Vector3 | null,
-  enablePositionHold: (enabled: boolean) => {
+  enableAltitudeHold: (enabled: boolean) => {
     const state = get();
     if (enabled) {
       // capture current store position
       const p = state.position.clone();
-      set({ positionHoldEnabled: true, holdPosition: p });
+      set({ altitudeHoldEnabled: true, holdPosition: p });
     } else {
-      set({ positionHoldEnabled: false, holdPosition: null });
+      set({ altitudeHoldEnabled: false, holdPosition: null });
     }
   },
 

@@ -42,12 +42,23 @@ export class DronePhysics {
 
         // Calculate forces and torques
         const forces = this.calculateForces(newState, motorOutputs, windForce, dt);
-        const torques = this.calculateTorques(motorOutputs);
+        const bodyTorques = this.calculateTorques(motorOutputs);
+
+        // Transform body-frame torques to world-frame angular velocity changes
+        // Body frame: pitch/roll are relative to drone's orientation
+        // We only need to rotate pitch and roll by yaw; yaw stays the same
+        const yaw = currentState.rotation.y;
+        const cosYaw = Math.cos(yaw);
+        const sinYaw = Math.sin(yaw);
+
+        // Transform pitch and roll torques from body to world frame
+        const worldPitchTorque = bodyTorques.x * cosYaw + bodyTorques.z * sinYaw;
+        const worldRollTorque = -bodyTorques.x * sinYaw + bodyTorques.z * cosYaw;
 
         // Update angular velocity (torque / inertia)
-        newState.angularVelocity.x += (torques.x / this.config.inertia.x) * dt;
-        newState.angularVelocity.y += (torques.y / this.config.inertia.y) * dt;
-        newState.angularVelocity.z += (torques.z / this.config.inertia.z) * dt;
+        newState.angularVelocity.x += (worldPitchTorque / this.config.inertia.x) * dt;
+        newState.angularVelocity.y += (bodyTorques.y / this.config.inertia.y) * dt;
+        newState.angularVelocity.z += (worldRollTorque / this.config.inertia.z) * dt;
 
         // Apply angular drag
         const dragFactor = Math.max(0, 1 - this.config.angularDrag * dt);
@@ -79,6 +90,13 @@ export class DronePhysics {
 
         // Apply linear drag
         newState.velocity.multiplyScalar(1 - this.config.drag * dt);
+
+        // Clamp velocity to maximum speed (20 m/s)
+        const MAX_SPEED = 20.0; // m/s
+        const currentSpeed = newState.velocity.length();
+        if (currentSpeed > MAX_SPEED) {
+            newState.velocity.multiplyScalar(MAX_SPEED / currentSpeed);
+        }
 
         // Calculate proposed movement
         const proposedPosition = newState.position.clone();
@@ -137,6 +155,9 @@ export class DronePhysics {
 
     private calculateTorques(motorOutputs: MotorOutputs): THREE.Vector3 {
         const torqueStrength = 2.0;
+
+        // Direct torque application without gyroscopic coupling
+        // This gives cleaner, more intuitive control
         return new THREE.Vector3(
             motorOutputs.pitch * torqueStrength,
             motorOutputs.yaw * torqueStrength * 0.5,

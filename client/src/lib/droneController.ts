@@ -297,17 +297,20 @@ export class DroneController {
             return setpoints;
         }
 
-        // Position hold disabled
-        if (!droneStore.positionHoldEnabled) {
+        // Altitude hold disabled
+        if (!droneStore.altitudeHoldEnabled) {
             return manualControls;
         }
 
-        // Check for manual input
+        // Check for manual input (excluding yaw - allow yaw in altitude hold)
         const deadzone = 0.05;
         const hasInput =
             Math.abs(manualControls.throttle) > deadzone ||
             Math.abs(manualControls.pitch) > deadzone ||
             Math.abs(manualControls.roll) > deadzone;
+
+        // Check for yaw input separately
+        const hasYawInput = Math.abs(manualControls.yaw) > deadzone;
 
         if (hasInput) {
             // Manual input - disable hold
@@ -322,11 +325,11 @@ export class DroneController {
             droneStore.holdPosition = null;
             return manualControls;
         } else {
-            // No input - engage position hold
+            // No input - engage altitude hold
             this.isAutopilot = true;
 
             if (this.lastManualActive || !droneStore.holdPosition) {
-                useDrone.getState().enablePositionHold(true);
+                useDrone.getState().enableAltitudeHold(true);
                 this.targets.position = droneStore.position.clone();
                 this.targets.altitude = droneStore.position.y;
                 this.targets.heading = droneStore.rotation.y;
@@ -340,6 +343,14 @@ export class DroneController {
                 if (this.targets.heading === undefined) {
                     this.targets.heading = droneStore.rotation.y;
                 }
+            }
+
+            // Allow manual yaw control in altitude hold mode
+            if (hasYawInput) {
+                this.targets.heading = undefined; // Clear heading target to allow manual yaw
+            } else if (this.targets.heading === undefined) {
+                // If no yaw input and no heading target, maintain current heading
+                this.targets.heading = droneStore.rotation.y;
             }
 
             this.lastManualActive = false;
@@ -381,27 +392,17 @@ export class DroneController {
             setpoints.throttle = Math.max(0, Math.min(1, hoverThrottle + throttleCorrection));
         }
 
-        // Position control
-        if (this.targets.position) {
-            const distance = droneStore.position.distanceTo(this.targets.position);
-            if (distance > this.config.positionTolerance) {
-                const toTarget = this.targets.position.clone().sub(droneStore.position);
-                const tiltGain = 0.02;
-                const maxTilt = 0.1;
-                setpoints.pitch = Math.max(-maxTilt, Math.min(maxTilt, -toTarget.z * tiltGain));
-                setpoints.roll = Math.max(-maxTilt, Math.min(maxTilt, toTarget.x * tiltGain));
-            } else {
-                setpoints.pitch = 0;
-                setpoints.roll = 0;
-            }
-        } else {
-            setpoints.pitch = 0;
-            setpoints.roll = 0;
-        }
+        // Position control - keep drone perfectly level (0° pitch and roll)
+        // In altitude hold mode, maintain level flight like in normal mode with no input
+        setpoints.pitch = 0;
+        setpoints.roll = 0;
 
-        // Heading control
+        // Heading control (allow manual yaw to override)
         if (this.targets.heading !== undefined) {
             setpoints.yaw = this.targets.heading;
+        } else {
+            // Pass through manual yaw control from stored manual setpoints
+            setpoints.yaw = this.manualSetpoints.yaw;
         }
 
         // Direct angle control
