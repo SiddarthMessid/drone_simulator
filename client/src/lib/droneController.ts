@@ -43,6 +43,7 @@ export class DroneController {
     private manualSetpoints: PIDSetpoints = { pitch: 0, roll: 0, yaw: 0, throttle: 0 };
     private holdThrottleExpire: number | null = null;
     private lastManualActive: boolean = false;
+    private yawAlignmentComplete: boolean = false;
 
     constructor(adapter: DroneAdapter, config: Partial<DroneControllerConfig> = {}) {
         this.adapter = adapter;
@@ -533,6 +534,8 @@ export class DroneController {
                 this.targets.heading = droneStore.rotation.y;
             }
 
+
+
             // Transform velocity to body frame to check forward speed
             const yaw = droneStore.rotation.y;
             const cosYaw = Math.cos(yaw);
@@ -550,10 +553,9 @@ export class DroneController {
                 // Pitch hard opposite to velocity direction
                 const reversePitchGain = 1.5;
                 const reversePitch = forwardVel * reversePitchGain;
-                const reverseRoll = sideVel * reversePitchGain;
 
                 setpoints.pitch = reversePitch;
-                setpoints.roll = reverseRoll;
+                setpoints.roll = 0; // Always zero
                 setpoints.throttle = 1.0; // Full throttle for maximum braking force
 
                 console.log(`[BRAKE] Reverse thrust! Speed: ${totalSpeed.toFixed(2)}m/s, Pitch: ${reversePitch.toFixed(2)}`);
@@ -585,8 +587,8 @@ export class DroneController {
 
                 // Map to pitch/roll
                 const kv = 0.2;
-                setpoints.pitch = -desiredVelForward * kv;
-                setpoints.roll = desiredVelSide * kv;
+                setpoints.pitch = desiredVelForward * kv;
+                setpoints.roll = 0; // Always zero - no roll control
             }
 
             // Clamp pitch/roll
