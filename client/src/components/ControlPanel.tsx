@@ -246,31 +246,47 @@ export default function ControlPanel() {
               size="sm"
               onClick={async () => {
                 const { drone } = await import("../lib/droneController");
+                const { useDrone } = await import("../lib/stores/useDrone");
+                const THREE = await import("three");
 
                 try {
-                  console.log(
-                    `[TEST] Starting 2-second forward flight test...`
+                  console.log(`[TEST] ========== MISSION START ==========`);
+
+                  // 1. Takeoff
+                  console.log(`[TEST] Step 1: Taking off to 5m...`);
+                  await drone.takeoff(5);
+                  console.log(`[TEST] ✓ Takeoff complete`);
+
+                  // 2. Fly to target (10m forward)
+                  const currentPos = useDrone.getState().position;
+                  const currentYaw = useDrone.getState().rotation.y;
+                  const targetPos = new THREE.Vector3(
+                    currentPos.x + Math.sin(currentYaw) * 10,
+                    5, // Same altitude
+                    currentPos.z + Math.cos(currentYaw) * 10
                   );
 
-                  // Pitch forward for 2 seconds
-                  console.log(`[TEST] Moving forward for 2 seconds...`);
-                  await drone.setPitch(-15); // Pitch forward 15 degrees
-                  await drone.delay(2); // Wait 2 seconds
+                  console.log(
+                    `[TEST] Step 2: Flying to (${targetPos.x.toFixed(
+                      1
+                    )}, ${targetPos.z.toFixed(1)})...`
+                  );
+                  await drone.moveTo(targetPos);
+                  console.log(`[TEST] ✓ Reached target`);
 
-                  console.log(`[TEST] Braking...`);
-                  await drone.brake();
-
-                  console.log(`[TEST] Landing...`);
+                  // 3. Land
+                  console.log(`[TEST] Step 3: Landing...`);
                   await drone.land();
+                  console.log(`[TEST] ✓ Landed`);
 
-                  console.log(`[TEST] Test complete!`);
+                  console.log(`[TEST] ========== MISSION COMPLETE ==========`);
                 } catch (error) {
-                  console.error(`[TEST] Failed:`, error);
+                  console.error(`[TEST] ❌ Mission failed:`, error);
                 }
               }}
               variant="secondary"
             >
-              🧪 Test 2s
+              🚁 Full Mission
             </Button>
           </div>
         </div>

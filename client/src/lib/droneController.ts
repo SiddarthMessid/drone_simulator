@@ -388,33 +388,23 @@ export class DroneController {
             droneStore.holdPosition = null;
             return manualControls;
         } else {
-            // No input - engage altitude hold
+            // No input - engage ALTITUDE HOLD ONLY (no position or heading control)
             this.isAutopilot = true;
 
-            if (this.lastManualActive || !droneStore.holdPosition) {
+            if (this.lastManualActive) {
                 useDrone.getState().enableAltitudeHold(true);
-                this.targets.position = droneStore.position.clone();
+                // ONLY set altitude target, nothing else
                 this.targets.altitude = droneStore.position.y;
-                this.targets.heading = droneStore.rotation.y;
-                this.targets.throttle = 0.4;
-                this.holdThrottleExpire = Date.now() + 500;
+                this.targets.position = undefined;
+                this.targets.heading = undefined;
                 this.targets.pitch = undefined;
                 this.targets.roll = undefined;
-            } else if (droneStore.holdPosition) {
-                this.targets.position = droneStore.holdPosition.clone();
-                this.targets.altitude = droneStore.holdPosition.y;
-                if (this.targets.heading === undefined) {
-                    this.targets.heading = droneStore.rotation.y;
-                }
-            }
-
-            // Allow manual yaw control in altitude hold mode
-            if (hasYawInput) {
-                // User is yawing - clear heading target to allow manual control
-                this.targets.heading = undefined;
+                this.targets.throttle = undefined;
             } else {
-                // No yaw input - lock to current heading
-                this.targets.heading = droneStore.rotation.y;
+                // Keep holding current altitude
+                if (this.targets.altitude === undefined) {
+                    this.targets.altitude = droneStore.position.y;
+                }
             }
 
             this.lastManualActive = false;
@@ -495,17 +485,17 @@ export class DroneController {
                     console.log(`[BRAKE PHASE 1] FwdVel: ${forwardVel.toFixed(2)}, Target: ${(targetPitch * 180 / Math.PI).toFixed(0)}°, Current: ${(currentPitch * 180 / Math.PI).toFixed(1)}°, Speed: ${totalSpeed.toFixed(2)}m/s`);
                 }
             }
-            // PHASE 2: After 1.2 seconds - level out to 0°
+            // PHASE 2: After 1.2 seconds - level out to 0° and DROP THROTTLE
             else {
                 const pitchError = 0 - currentPitch;
                 const rollError = 0 - currentRoll;
 
                 setpoints.pitch = pitchError * 3.0;
                 setpoints.roll = rollError * 3.0;
-                setpoints.throttle = 0.4; // Hover throttle
+                setpoints.throttle = 0.4; // INSTANTLY drop to hover throttle
 
                 if (Math.random() < 0.1) {
-                    console.log(`[BRAKE PHASE 2] Leveling, Pitch: ${(currentPitch * 180 / Math.PI).toFixed(1)}°, Speed: ${totalSpeed.toFixed(2)}m/s`);
+                    console.log(`[BRAKE PHASE 2] Leveling + Hover throttle, Pitch: ${(currentPitch * 180 / Math.PI).toFixed(1)}°, Speed: ${totalSpeed.toFixed(2)}m/s`);
                 }
             }
 
@@ -527,12 +517,14 @@ export class DroneController {
             const worldVelZ = droneStore.velocity.z;
             const totalSpeed = Math.sqrt(worldVelX ** 2 + worldVelZ ** 2);
 
-            // Heading control with deadzone
-            const yawDeadzone = 0.5;
-            if (distance > yawDeadzone) {
+            // Heading control - lock heading early to prevent yaw oscillations
+            const yawLockDistance = 3.0; // Lock heading when within 3m
+            if (distance > yawLockDistance && this.targets.heading === undefined) {
+                // Set heading once at start
                 const desiredYaw = Math.atan2(posError.x, posError.z);
                 this.targets.heading = normalizeAngle(desiredYaw);
             } else if (this.targets.heading === undefined) {
+                // Lock to current heading if not set
                 this.targets.heading = droneStore.rotation.y;
             }
 
@@ -561,9 +553,10 @@ export class DroneController {
 
                 console.log(`[BRAKE] Reverse thrust! Speed: ${totalSpeed.toFixed(2)}m/s, Pitch: ${reversePitch.toFixed(2)}`);
             } else if (distance < this.config.positionTolerance && totalSpeed < 0.5) {
-                // STOPPED AT TARGET
+                // STOPPED AT TARGET - drop throttle immediately
                 setpoints.pitch = 0;
                 setpoints.roll = 0;
+                setpoints.throttle = 0.4; // Hover throttle
             } else {
                 // NORMAL PD CONTROL
                 const kp_pos = 1.0;
@@ -675,10 +668,14 @@ export class DroneController {
                 if (this.targets.position) {
                     const distance = droneStore.position.distanceTo(this.targets.position);
                     const speed = droneStore.velocity.length();
+                    const elapsedTime = Date.now() - this.currentCommand.startTime;
+
                     if (Math.random() < 0.1) {
                         console.log(`[MoveTo] Dist: ${distance.toFixed(2)}m, Speed: ${speed.toFixed(2)}m/s`);
                     }
-                    isComplete = distance < 1.0 && speed < 1.0;
+
+                    // Complete when close and slow, OR after reasonable time
+                    isComplete = (distance < 1.5 && speed < 0.8) || (distance < 0.5);
                 }
                 break;
 
