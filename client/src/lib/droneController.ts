@@ -296,12 +296,17 @@ export class DroneController {
             const droneStore = useDrone.getState();
 
             // Calculate initial heading to target
-            // In THREE.js coordinate system: atan2(x, z) gives correct heading
+            // In THREE.js: yaw=0 points in -Z direction, X is mirrored
             const posError = new THREE.Vector3().subVectors(targetPosition, droneStore.position);
-            const initialHeading = Math.atan2(posError.x, posError.z);
+            const initialHeading = Math.atan2(-posError.x, -posError.z);
 
-            console.log(`[MoveTo] Starting from (${droneStore.position.x.toFixed(1)}, ${droneStore.position.z.toFixed(1)}) to (${targetPosition.x.toFixed(1)}, ${targetPosition.z.toFixed(1)})`);
-            console.log(`[MoveTo] Initial heading: ${(initialHeading * 180 / Math.PI).toFixed(1)}°`);
+            console.log(`[MoveTo] ========================================`);
+            console.log(`[MoveTo] From: X:${droneStore.position.x.toFixed(1)}, Z:${droneStore.position.z.toFixed(1)}`);
+            console.log(`[MoveTo] To:   X:${targetPosition.x.toFixed(1)}, Z:${targetPosition.z.toFixed(1)}`);
+            console.log(`[MoveTo] Error: ΔX:${posError.x.toFixed(1)}, ΔZ:${posError.z.toFixed(1)}`);
+            console.log(`[MoveTo] Calculated heading: ${(initialHeading * 180 / Math.PI).toFixed(1)}°`);
+            console.log(`[MoveTo] Current heading: ${(droneStore.rotation.y * 180 / Math.PI).toFixed(1)}°`);
+            console.log(`[MoveTo] ========================================`);
 
             const command: DroneCommand = {
                 id: `moveTo_${Date.now()}`,
@@ -520,8 +525,8 @@ export class DroneController {
             // Heading control - lock heading early to prevent yaw oscillations
             const yawLockDistance = 3.0; // Lock heading when within 3m
             if (distance > yawLockDistance && this.targets.heading === undefined) {
-                // Set heading once at start
-                const desiredYaw = Math.atan2(posError.x, posError.z);
+                // Set heading once at start (atan2(-x, -z) for THREE.js coordinate system)
+                const desiredYaw = Math.atan2(-posError.x, -posError.z);
                 this.targets.heading = normalizeAngle(desiredYaw);
             } else if (this.targets.heading === undefined) {
                 // Lock to current heading if not set

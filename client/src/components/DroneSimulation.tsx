@@ -256,11 +256,24 @@ export default function DroneSimulation() {
       const rollTorque =
         setpoints.roll - rotation.z * 2.0 - angularVelocity.z * 1.0;
 
-      // Yaw uses PID to reach target heading
+      // Yaw uses PD to reach target heading
       const yawError = setpoints.yaw - rotation.y;
       const normalizedYawError =
         ((yawError + Math.PI) % (2 * Math.PI)) - Math.PI;
-      const yawTorque = normalizedYawError * 2.0 - angularVelocity.y * 1.0;
+      const yawTorque = normalizedYawError * 4.0 - angularVelocity.y * 1.5; // Original working version
+
+      // Debug yaw control
+      if (Math.random() < 0.05) {
+        console.log(
+          `[YAW] Target: ${((setpoints.yaw * 180) / Math.PI).toFixed(
+            1
+          )}°, Current: ${((rotation.y * 180) / Math.PI).toFixed(
+            1
+          )}°, Error: ${((normalizedYawError * 180) / Math.PI).toFixed(
+            1
+          )}°, Torque: ${yawTorque.toFixed(2)}`
+        );
+      }
 
       motorOutputs = {
         pitch: pitchTorque,
@@ -559,6 +572,12 @@ export default function DroneSimulation() {
       {/* Drone */}
       <group ref={droneRef}>
         <DroneModelSwitcher />
+
+        {/* Debug: Thick yellow line showing forward direction (30m) */}
+        <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 0, -15]}>
+          <cylinderGeometry args={[0.15, 0.15, 30, 8]} />
+          <meshBasicMaterial color="yellow" />
+        </mesh>
       </group>
 
       {/* Wind Sources Visualization */}
