@@ -163,7 +163,7 @@ export class SimpleDroneController {
 
                 const maxTilt = 0.1;
                 setpoints.roll = Math.max(-maxTilt, Math.min(maxTilt, localVelX * kv));
-                setpoints.pitch = Math.max(-maxTilt, Math.min(maxTilt, -localVelZ * kv));
+                setpoints.pitch = Math.max(-maxTilt, Math.min(maxTilt, localVelZ * kv));
             }
 
             setpoints.yaw = this.state.rotation.y; // Maintain heading
@@ -246,7 +246,7 @@ export class SimpleDroneController {
             // Apply velocity to tilt with strict limits
             const maxTilt = 0.15; // Much smaller max tilt for stability
             setpoints.roll = Math.max(-maxTilt, Math.min(maxTilt, localVelX * kv));
-            setpoints.pitch = Math.max(-maxTilt, Math.min(maxTilt, -localVelZ * kv));
+            setpoints.pitch = Math.max(-maxTilt, Math.min(maxTilt, localVelZ * kv));
 
             // Yaw control: DON'T point toward target, maintain leader's heading
             // This prevents formation from breaking when leader yaws
