@@ -309,8 +309,11 @@ export class DroneController {
             Math.abs(manualControls.pitch) > deadzone ||
             Math.abs(manualControls.roll) > deadzone;
 
-        // Check for yaw input separately
-        const hasYawInput = Math.abs(manualControls.yaw) > deadzone;
+        // Check for yaw input separately by comparing with current rotation
+        // If the target yaw differs from current yaw, user is actively yawing
+        const yawDifference = Math.abs(manualControls.yaw - droneStore.rotation.y);
+        const normalizedYawDiff = Math.min(yawDifference, 2 * Math.PI - yawDifference); // Handle wrap-around
+        const hasYawInput = normalizedYawDiff > 0.01; // Small threshold for active yaw input
 
         if (hasInput) {
             // Manual input - disable hold
@@ -347,9 +350,10 @@ export class DroneController {
 
             // Allow manual yaw control in altitude hold mode
             if (hasYawInput) {
-                this.targets.heading = undefined; // Clear heading target to allow manual yaw
-            } else if (this.targets.heading === undefined) {
-                // If no yaw input and no heading target, maintain current heading
+                // User is yawing - clear heading target to allow manual control
+                this.targets.heading = undefined;
+            } else {
+                // No yaw input - lock to current heading
                 this.targets.heading = droneStore.rotation.y;
             }
 
@@ -437,7 +441,7 @@ export class DroneController {
                 const hoverTime = Date.now() - this.currentCommand.startTime;
                 const isStable = droneStore.velocity.length() < 0.5;
                 const hasPosition = this.targets.position !== undefined;
-                const isNearTarget = hasPosition
+                const isNearTarget = hasPosition && this.targets.position
                     ? droneStore.position.distanceTo(this.targets.position) < 1.0
                     : true;
                 isComplete = hoverTime > 1000 && isStable && isNearTarget;
@@ -753,35 +757,35 @@ export class DroneController {
     }
 
     /**
-     * Enable position hold mode
+     * Enable altitude hold mode
      */
-    enablePositionHold(): void {
+    enableAltitudeHold(): void {
         const droneStore = useDrone.getState();
-        droneStore.enablePositionHold(true);
+        droneStore.enableAltitudeHold(true);
     }
 
     /**
-     * Disable position hold mode
+     * Disable altitude hold mode
      */
-    disablePositionHold(): void {
+    disableAltitudeHold(): void {
         const droneStore = useDrone.getState();
-        droneStore.enablePositionHold(false);
+        droneStore.enableAltitudeHold(false);
     }
 
     /**
-     * Check if position hold is enabled
+     * Check if altitude hold is enabled
      */
-    isPositionHoldEnabled(): boolean {
+    isAltitudeHoldEnabled(): boolean {
         const droneStore = useDrone.getState();
-        return droneStore.positionHoldEnabled;
+        return droneStore.altitudeHoldEnabled;
     }
 
     /**
-     * Toggle position hold mode
+     * Toggle altitude hold mode
      */
-    togglePositionHold(): void {
+    toggleAltitudeHold(): void {
         const droneStore = useDrone.getState();
-        droneStore.enablePositionHold(!droneStore.positionHoldEnabled);
+        droneStore.enableAltitudeHold(!droneStore.altitudeHoldEnabled);
     }
 
     /**

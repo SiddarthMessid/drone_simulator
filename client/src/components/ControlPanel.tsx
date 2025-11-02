@@ -212,16 +212,16 @@ export default function ControlPanel() {
               size="sm"
               onClick={() => {
                 const s = useDrone.getState();
-                s.enablePositionHold(!s.positionHoldEnabled);
+                s.enableAltitudeHold(!s.altitudeHoldEnabled);
               }}
               variant={
-                useDrone.getState().positionHoldEnabled ? "default" : "outline"
+                useDrone.getState().altitudeHoldEnabled ? "default" : "outline"
               }
             >
               <Target className="w-4 h-4 mr-2" />{" "}
-              {useDrone.getState().positionHoldEnabled
+              {useDrone.getState().altitudeHoldEnabled
                 ? "Holding"
-                : "Hold Position"}
+                : "Altitude Hold"}
             </Button>
           </div>
         </div>
