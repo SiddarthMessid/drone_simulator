@@ -386,17 +386,24 @@ export class DroneController {
       const positionError = new THREE.Vector3().subVectors(targetWorld, this.state.position);
       const distance = positionError.length();
 
-      // Calculate altitude control (throttle) by converting desired accel -> thrust
+      // Calculate altitude control (throttle) - only if significant error
       const altitudeError = targetWorld.y - this.state.position.y;
-      const kp_pos = 1.0;
-      const kd_pos = 0.5;
-      const a_des = kp_pos * altitudeError - kd_pos * this.state.velocity.y;
-      const maxThrust = this.thrustFactor * this.physicsMass * this.physicsGravity;
-      const requiredThrust = this.physicsMass * (a_des + this.physicsGravity);
-      setpoints.throttle = Math.max(0, Math.min(1, requiredThrust / maxThrust));
+      const altitudeTolerance = 0.3;
+
+      if (Math.abs(altitudeError) > altitudeTolerance || Math.abs(this.state.velocity.y) > 0.1) {
+        const kp_pos = 1.0;
+        const kd_pos = 0.5;
+        const a_des = kp_pos * altitudeError - kd_pos * this.state.velocity.y;
+        const maxThrust = this.thrustFactor * this.physicsMass * this.physicsGravity;
+        const requiredThrust = this.physicsMass * (a_des + this.physicsGravity);
+        setpoints.throttle = Math.max(0, Math.min(1, requiredThrust / maxThrust));
+      } else {
+        // Within altitude tolerance - no throttle
+        setpoints.throttle = 0;
+      }
 
       // Only apply horizontal control if we have a valid distance
-      if (distance > 0.01) {
+      if (distance > 0.5) {
         // Normalize the horizontal error
         const horizontalError = new THREE.Vector2(positionError.x, positionError.z);
         const horizontalDistance = horizontalError.length();
@@ -446,9 +453,9 @@ export class DroneController {
           const a_des_lateral = kv_vel * (desiredLateralVel - localVelocityLateral);
 
           // Convert desired lateral acceleration to desired tilt angles (small-angle approx)
-          // a_forward ≈ -g * pitch  => pitch ≈ -a_forward / g
+          // a_forward ≈ g * pitch  => pitch ≈ a_forward / g
           // a_lateral ≈ g * roll   => roll ≈ a_lateral / g
-          const pitchSetpoint = Math.max(-this.config.safetyLimits.maxTiltAngle, Math.min(this.config.safetyLimits.maxTiltAngle, -a_des_forward / this.physicsGravity));
+          const pitchSetpoint = Math.max(-this.config.safetyLimits.maxTiltAngle, Math.min(this.config.safetyLimits.maxTiltAngle, a_des_forward / this.physicsGravity));
           const rollSetpoint = Math.max(-this.config.safetyLimits.maxTiltAngle, Math.min(this.config.safetyLimits.maxTiltAngle, a_des_lateral / this.physicsGravity));
 
           // Apply to setpoints with an overall cap (smaller than max tilt for safety)
@@ -462,7 +469,17 @@ export class DroneController {
             setpoints.pitch *= distanceScale;
             setpoints.roll *= distanceScale;
           }
+        } else {
+          // Within horizontal tolerance - zero tilt and yaw
+          setpoints.pitch = 0;
+          setpoints.roll = 0;
+          setpoints.yaw = 0;
         }
+      } else {
+        // Within position tolerance - zero tilt and yaw
+        setpoints.pitch = 0;
+        setpoints.roll = 0;
+        setpoints.yaw = 0;
       }
     }
 

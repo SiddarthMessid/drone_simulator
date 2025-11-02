@@ -52,10 +52,16 @@ function generateFormationOffsets(formation: 'triangle' | 'line' | 'circle', cou
     }
 
     case 'line': {
-      // Line centered on the leader's X axis
-      const start = -spacing * (count + 1) / 2;
+      // Horizontal line: drones alternating left and right of leader
+      // Pattern: right, left, right, left, etc.
       for (let i = 0; i < count; i++) {
-        offsets.push(new THREE.Vector3(start + spacing * (i + 1), 0, 0));
+        const side = i % 2 === 0 ? 1 : -1; // Alternate right (+) and left (-)
+        const distance = Math.floor(i / 2) + 1; // Distance from center (1, 1, 2, 2, 3, 3...)
+        offsets.push(new THREE.Vector3(
+          side * spacing * distance,  // X: alternate left/right
+          0,                          // Y: same altitude
+          0                           // Z: same forward/back position as leader
+        ));
       }
       break;
     }
@@ -141,7 +147,7 @@ export const useMultiDrone = create<{
     // If leader is inside fleet we exclude it from follower count;
     // otherwise all drones in the map are treated as followers of the global main drone.
     const followerCount = state.drones.size + 1 - (leaderInFleet ? 1 : 0);
-    const offsets = generateFormationOffsets('triangle', Math.max(0, followerCount), spacing);
+    const offsets = generateFormationOffsets('circle', Math.max(0, followerCount), spacing);
 
     // Calculate the spawn position for the new drone (in world space)
     const newDroneOffset = offsets[followerCount - 1] || new THREE.Vector3(0, 0, -followerCount * spacing);
@@ -158,10 +164,10 @@ export const useMultiDrone = create<{
     // Ensure spawn altitude is reasonable (at least 5m above ground)
     spawnPosition.y = Math.max(5, leaderPos.y);
 
-    // Initialize the new drone at the spawn position
+    // Initialize the new drone at the spawn position with zero rotation
     const initialState = {
       position: spawnPosition.clone(),
-      rotation: new THREE.Vector3(0, leaderRot.y, 0), // Match leader's yaw
+      rotation: new THREE.Vector3(0, 0, 0), // Zero pitch, yaw, and roll
       velocity: new THREE.Vector3(0, 0, 0),
       angularVelocity: new THREE.Vector3(0, 0, 0)
     };
@@ -208,8 +214,7 @@ export const useMultiDrone = create<{
       if (added) added.setAsLeader(true);
     }
 
-    // Persist state and trigger any auto-assign routines
-    get().autoAssignFormation();
+    // Persist state (formation already assigned above, no need to call autoAssignFormation)
     set({ state: { ...state } });
   },
 
@@ -217,10 +222,10 @@ export const useMultiDrone = create<{
     const { state } = get();
     const { drones } = state;
 
-    // Default to auto-chosen formation (V for now) based on drone count
+    // Default to circle formation based on drone count
     const spacing = 5;
     const followerCount = drones.size;
-    const positions = generateFormationOffsets('triangle', followerCount, spacing);
+    const positions = generateFormationOffsets('circle', followerCount, spacing);
 
     let posIndex = 0;
     drones.forEach((drone, id) => {

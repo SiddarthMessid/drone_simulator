@@ -52,14 +52,15 @@ function generateFormationOffsets(formation: 'triangle' | 'line' | 'circle', cou
         }
 
         case 'line': {
-            // Horizontal line: drones side-by-side perpendicular to leader's forward
-            // All drones at same Z (slightly behind), spread along X axis
-            const start = -spacing * (count - 1) / 2;
+            // Horizontal line: drones alternating left and right of leader
+            // Pattern: right, left, right, left, etc.
             for (let i = 0; i < count; i++) {
+                const side = i % 2 === 0 ? 1 : -1; // Alternate right (+) and left (-)
+                const distance = Math.floor(i / 2) + 1; // Distance from center (1, 1, 2, 2, 3, 3...)
                 offsets.push(new THREE.Vector3(
-                    start + spacing * i,    // X: spread left to right
-                    0,                      // Y: same altitude
-                    -spacing * 0.5          // Z: slightly behind leader for visibility
+                    side * spacing * distance,  // X: alternate left/right
+                    0,                          // Y: same altitude
+                    0                           // Z: same forward/back position as leader
                 ));
             }
             break;
@@ -108,7 +109,7 @@ export const useMultiDrone = create<{
         maxDrones: DEFAULT_MAX_DRONES,
         dronePositions: new Map(),
         droneColors: new Map(),
-        currentFormation: 'triangle',
+        currentFormation: 'circle',
     },
 
     addDrone: () => {
@@ -136,10 +137,14 @@ export const useMultiDrone = create<{
         const leaderPos = mainDronePos.clone();
         const leaderRot = mainDroneRot.clone();
 
-        // Calculate formation offset for this drone
-        const droneIndex = state.drones.size;
-        const offsets = generateFormationOffsets(state.currentFormation, droneIndex + 1, 6);
-        const offset = offsets[droneIndex] || new THREE.Vector3(0, 0, -(droneIndex + 1) * 6);
+        // Calculate the offset for this specific NEW drone based on FINAL count
+        // Use the final count (after adding this drone) for even circle distribution
+        const finalDroneCount = state.drones.size + 1;
+        const allOffsets = generateFormationOffsets(state.currentFormation, finalDroneCount, 6);
+
+        // This new drone gets the last offset in the array
+        const droneIndex = state.drones.size; // Current size before adding
+        const offset = allOffsets[droneIndex] || new THREE.Vector3(0, 0, -(droneIndex + 1) * 6);
 
         // Transform offset to world space using leader rotation
         const rotationMatrix = new THREE.Matrix4();
@@ -151,10 +156,10 @@ export const useMultiDrone = create<{
         const spawnPos = leaderPos.clone().add(worldOffset);
         spawnPos.y = Math.max(5, leaderPos.y); // Safe altitude
 
-        // Initialize drone state
+        // Initialize drone state with zero rotation (pitch=0, yaw=0, roll=0)
         const initialState = {
             position: spawnPos,
-            rotation: new THREE.Vector3(0, leaderRot.y, 0), // Match leader yaw
+            rotation: new THREE.Vector3(0, 0, 0), // Zero pitch, yaw, and roll
             velocity: new THREE.Vector3(0, 0, 0),
             angularVelocity: new THREE.Vector3(0, 0, 0)
         };
@@ -164,25 +169,15 @@ export const useMultiDrone = create<{
         controller.setAsLeader(false);
         controller.updateLeaderPosition(leaderPos, leaderRot, mainDroneVel);
 
-        // Add to store
+        // Add to store AFTER initialization
         state.drones.set(id, controller);
         state.dronePositions.set(id, spawnPos.clone());
         state.droneColors.set(id, DEFAULT_COLORS[state.droneColors.size % DEFAULT_COLORS.length]);
 
         console.log(`Added drone ${id} at ${spawnPos.toArray()} with offset ${offset.toArray()}`);
 
-        // Automatically reassign formation to all drones when count >= 2
-        if (state.drones.size >= 2) {
-            // Reassign formation offsets to all drones
-            const allOffsets = generateFormationOffsets(state.currentFormation, state.drones.size, 6);
-            let idx = 0;
-            state.drones.forEach((drone, droneId) => {
-                const newOffset = allOffsets[idx++] || new THREE.Vector3(0, 0, -idx * 6);
-                drone.setFormationTarget(newOffset);
-                drone.updateLeaderPosition(leaderPos, leaderRot);
-                console.log(`Reassigned drone ${droneId} offset:`, newOffset.toArray());
-            });
-        }
+        // DO NOT reassign offsets to existing drones - they keep their original positions
+        // Only the new drone gets its offset, existing drones maintain their formation positions
 
         set({ state: { ...state } });
     },

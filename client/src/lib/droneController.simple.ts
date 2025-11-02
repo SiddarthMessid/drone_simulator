@@ -205,12 +205,19 @@ export class SimpleDroneController {
             return setpoints;
         }
 
-        // Altitude control (simple PD)
+        // Altitude control (simple PD) - only apply if there's significant error
         const altError = targetWorld.y - this.state.position.y;
-        const kp_alt = 0.3;
-        const kd_alt = 0.2;
-        const throttleAdjust = kp_alt * altError - kd_alt * this.state.velocity.y;
-        setpoints.throttle = Math.max(0, Math.min(1, 0.5 + throttleAdjust));
+        const altitudeTolerance = 0.3;
+
+        if (Math.abs(altError) > altitudeTolerance || Math.abs(this.state.velocity.y) > 0.1) {
+            const kp_alt = 0.3;
+            const kd_alt = 0.2;
+            const throttleAdjust = kp_alt * altError - kd_alt * this.state.velocity.y;
+            setpoints.throttle = Math.max(0, Math.min(1, 0.5 + throttleAdjust));
+        } else {
+            // Within altitude tolerance - no throttle adjustment
+            setpoints.throttle = 0;
+        }
 
         // Horizontal position control (only if distance is significant)
         if (distance > 0.5) {
@@ -258,15 +265,10 @@ export class SimpleDroneController {
                 setpoints.yaw = this.state.rotation.y;
             }
         } else {
-            // Within tolerance - hold position with zero tilt
+            // Within tolerance - hold position with zero tilt and zero yaw
             setpoints.pitch = 0;
             setpoints.roll = 0;
-            // Match leader's yaw
-            if (this.leaderRotation) {
-                setpoints.yaw = this.leaderRotation.y;
-            } else {
-                setpoints.yaw = this.state.rotation.y;
-            }
+            setpoints.yaw = 0;
         }
 
         return setpoints;
