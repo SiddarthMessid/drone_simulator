@@ -259,8 +259,22 @@ export class DroneController {
     }
 
     async moveTo(targetPosition: THREE.Vector3, options: { speed?: number, timeout?: number } = {}): Promise<void> {
-        console.warn(`moveTo() not implemented - position controller needs work`);
-        return Promise.resolve();
+        return new Promise((resolve, reject) => {
+            const command: DroneCommand = {
+                id: `moveTo_${Date.now()}`,
+                type: 'moveTo',
+                startTime: Date.now(),
+                parameters: { targetPosition, speed: options.speed || 5.0 },
+                resolve,
+                reject,
+                timeout: options.timeout || this.config.commandTimeout
+            };
+
+            this.targets.position = targetPosition.clone();
+            this.targets.altitude = targetPosition.y;
+            this.isAutopilot = true;
+            this.executeCommand(command);
+        });
     }
 
     enableManualControl(): void {
@@ -396,10 +410,38 @@ export class DroneController {
             setpoints.throttle = Math.max(0, Math.min(1, hoverThrottle + throttleCorrection));
         }
 
-        // Position control - keep drone perfectly level (0° pitch and roll)
-        // In altitude hold mode, maintain level flight like in normal mode with no input
-        setpoints.pitch = 0;
-        setpoints.roll = 0;
+        // Simple position control: point at target and move forward
+        if (this.targets.position) {
+            const posError = new THREE.Vector3().subVectors(this.targets.position, droneStore.position);
+            const distance = Math.sqrt(posError.x ** 2 + posError.z ** 2);
+
+            // Calculate desired heading to target
+            const targetYaw = Math.atan2(posError.x, -posError.z);
+
+            // Set heading target
+            this.targets.heading = targetYaw;
+
+            if (distance > this.config.positionTolerance) {
+                // Move forward toward target
+                const speed = Math.min(distance * 0.3, 3.0); // Speed proportional to distance, max 3 m/s
+                const pitchAmount = speed * 0.08; // Convert speed to pitch angle
+
+                setpoints.pitch = -pitchAmount; // Negative = forward
+                setpoints.roll = 0; // No roll, just go straight
+
+                // Limit pitch
+                const maxPitch = 0.15;
+                setpoints.pitch = Math.max(-maxPitch, Math.min(maxPitch, setpoints.pitch));
+            } else {
+                // At target - stop and level
+                setpoints.pitch = 0;
+                setpoints.roll = 0;
+            }
+        } else {
+            // No position target - keep level (altitude hold mode)
+            setpoints.pitch = 0;
+            setpoints.roll = 0;
+        }
 
         // Heading control (allow manual yaw to override)
         if (this.targets.heading !== undefined) {
@@ -450,7 +492,9 @@ export class DroneController {
             case 'moveTo':
                 if (this.targets.position) {
                     const distance = droneStore.position.distanceTo(this.targets.position);
-                    isComplete = distance < this.config.positionTolerance;
+                    const speed = droneStore.velocity.length();
+                    console.log(`MoveTo: distance=${distance.toFixed(2)}m, speed=${speed.toFixed(2)}m/s, tolerance=${this.config.positionTolerance}m`);
+                    isComplete = distance < this.config.positionTolerance && speed < 2.0;
                 }
                 break;
 

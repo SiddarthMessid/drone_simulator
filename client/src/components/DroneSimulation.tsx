@@ -99,8 +99,8 @@ export default function DroneSimulation() {
 
         // Wait a frame for the position to update, then start takeoff
         setTimeout(() => {
-          // Enable position hold to allow autopilot to work
-          useDrone.getState().enablePositionHold(true);
+          // Enable altitude hold to allow autopilot to work
+          useDrone.getState().enableAltitudeHold(true);
           missionState.current = "takeoff";
           drone
             .takeoff(10)
