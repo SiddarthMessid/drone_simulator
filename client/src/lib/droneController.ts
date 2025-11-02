@@ -410,35 +410,58 @@ export class DroneController {
             setpoints.throttle = Math.max(0, Math.min(1, hoverThrottle + throttleCorrection));
         }
 
-        // Simple position control: point at target and move forward
+        // Position control with velocity feedback for smooth stopping
         if (this.targets.position) {
             const posError = new THREE.Vector3().subVectors(this.targets.position, droneStore.position);
             const distance = Math.sqrt(posError.x ** 2 + posError.z ** 2);
 
             // Calculate desired heading to target
             const targetYaw = Math.atan2(posError.x, -posError.z);
-
-            // Set heading target
             this.targets.heading = targetYaw;
 
+            // Calculate forward velocity in body frame
+            const yaw = droneStore.rotation.y;
+            const cosYaw = Math.cos(yaw);
+            const sinYaw = Math.sin(yaw);
+            const forwardVel = -droneStore.velocity.z * cosYaw - droneStore.velocity.x * sinYaw;
+
             if (distance > this.config.positionTolerance) {
-                // Move forward toward target
-                const speed = Math.min(distance * 0.3, 3.0); // Speed proportional to distance, max 3 m/s
-                const pitchAmount = speed * 0.08; // Convert speed to pitch angle
+                // Velocity control with braking profile
+                const maxSpeed = 3.0;
+                const brakingDistance = 5.0;
 
-                setpoints.pitch = -pitchAmount; // Negative = forward
-                setpoints.roll = 0; // No roll, just go straight
+                // Calculate desired speed (slow down as we approach)
+                let desiredSpeed;
+                if (distance > brakingDistance) {
+                    desiredSpeed = maxSpeed;
+                } else {
+                    desiredSpeed = maxSpeed * (distance / brakingDistance);
+                    desiredSpeed = Math.max(desiredSpeed, 0.5);
+                }
 
-                // Limit pitch
+                // Velocity feedback: pitch based on speed error
+                const speedError = desiredSpeed - forwardVel;
+                const kv = 0.15;
+
+                setpoints.pitch = -speedError * kv;
+                setpoints.roll = 0;
+
                 const maxPitch = 0.15;
                 setpoints.pitch = Math.max(-maxPitch, Math.min(maxPitch, setpoints.pitch));
             } else {
-                // At target - stop and level
-                setpoints.pitch = 0;
-                setpoints.roll = 0;
+                // At target - actively brake
+                if (Math.abs(forwardVel) > 0.2) {
+                    setpoints.pitch = forwardVel * 0.3; // Brake
+                    setpoints.roll = 0;
+
+                    const maxBrake = 0.1;
+                    setpoints.pitch = Math.max(-maxBrake, Math.min(maxBrake, setpoints.pitch));
+                } else {
+                    setpoints.pitch = 0;
+                    setpoints.roll = 0;
+                }
             }
         } else {
-            // No position target - keep level (altitude hold mode)
             setpoints.pitch = 0;
             setpoints.roll = 0;
         }
