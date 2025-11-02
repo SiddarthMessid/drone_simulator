@@ -262,18 +262,7 @@ export default function DroneSimulation() {
         ((yawError + Math.PI) % (2 * Math.PI)) - Math.PI;
       const yawTorque = normalizedYawError * 4.0 - angularVelocity.y * 1.5; // Original working version
 
-      // Debug yaw control
-      if (Math.random() < 0.05) {
-        console.log(
-          `[YAW] Target: ${((setpoints.yaw * 180) / Math.PI).toFixed(
-            1
-          )}°, Current: ${((rotation.y * 180) / Math.PI).toFixed(
-            1
-          )}°, Error: ${((normalizedYawError * 180) / Math.PI).toFixed(
-            1
-          )}°, Torque: ${yawTorque.toFixed(2)}`
-        );
-      }
+      // Debug yaw control - disabled to reduce console spam
 
       motorOutputs = {
         pitch: pitchTorque,

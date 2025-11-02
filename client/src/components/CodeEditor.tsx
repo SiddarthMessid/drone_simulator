@@ -3,7 +3,7 @@ import { useEditor } from "../lib/stores/useEditor";
 import { compileCode } from "../lib/codeCompiler";
 import { useDrone } from "../lib/stores/useDrone";
 import { useFileSystem } from "../lib/stores/useFileSystem";
-import { Play, FileCode, Info, X, Save } from "lucide-react";
+import { Play, FileCode, Info, X, Save, Trash2 } from "lucide-react";
 
 // Custom scrollbar styles
 const scrollbarStyles = `
@@ -36,7 +36,8 @@ export default function CodeEditor() {
   const lineNumbersRef = useRef<HTMLDivElement>(null);
   const { code, setCode, error, setError, setIsFocused } = useEditor();
   const { updatePIDParams, telemetry } = useDrone();
-  const { currentFileId, getCurrentFile, updateFile } = useFileSystem();
+  const { currentFileId, getCurrentFile, updateFile, deleteFile } =
+    useFileSystem();
   const [isCompiling, setIsCompiling] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [showInfo, setShowInfo] = useState(false);
@@ -94,6 +95,19 @@ export default function CodeEditor() {
       setHasUnsavedChanges(false);
       setSuccessMessage("File saved!");
       setTimeout(() => setSuccessMessage(""), 2000);
+    }
+  };
+
+  // Delete file function
+  const handleDeleteFile = () => {
+    if (currentFileId) {
+      const currentFile = getCurrentFile();
+      if (confirm(`Delete "${currentFile?.name}"? This cannot be undone.`)) {
+        deleteFile(currentFileId);
+        setCode(defaultCode);
+        setSuccessMessage("File deleted");
+        setTimeout(() => setSuccessMessage(""), 2000);
+      }
     }
   };
 
@@ -362,7 +376,34 @@ export default function CodeEditor() {
               <Info size={16} />
             </button>
           </div>
-          <div style={{ width: "1px" }} />
+          <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+            {currentFileId && (
+              <button
+                onClick={handleDeleteFile}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "#858585",
+                  cursor: "pointer",
+                  padding: "4px",
+                  display: "flex",
+                  alignItems: "center",
+                  borderRadius: "4px",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "#3e1e1e";
+                  e.currentTarget.style.color = "#f85149";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "transparent";
+                  e.currentTarget.style.color = "#858585";
+                }}
+                title="Delete file"
+              >
+                <Trash2 size={16} />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Info Panel */}
@@ -556,6 +597,39 @@ export default function CodeEditor() {
             gap: "8px",
           }}
         >
+          <button
+            onClick={saveFile}
+            disabled={!hasUnsavedChanges || !currentFileId}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px",
+              padding: "10px 16px",
+              background:
+                hasUnsavedChanges && currentFileId ? "#2ea043" : "#3e3e42",
+              color: hasUnsavedChanges && currentFileId ? "white" : "#858585",
+              border: "none",
+              borderRadius: "4px",
+              fontSize: "13px",
+              fontWeight: "500",
+              cursor:
+                hasUnsavedChanges && currentFileId ? "pointer" : "not-allowed",
+              opacity: hasUnsavedChanges && currentFileId ? 1 : 0.6,
+              transition: "all 0.2s",
+            }}
+            onMouseEnter={(e) => {
+              if (hasUnsavedChanges && currentFileId)
+                e.currentTarget.style.background = "#3fb950";
+            }}
+            onMouseLeave={(e) => {
+              if (hasUnsavedChanges && currentFileId)
+                e.currentTarget.style.background = "#2ea043";
+            }}
+          >
+            <Save size={14} />
+            Save
+          </button>
           <button
             onClick={handleCompile}
             disabled={isCompiling}
